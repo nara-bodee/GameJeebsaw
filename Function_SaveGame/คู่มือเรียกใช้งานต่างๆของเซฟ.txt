@@ -172,3 +172,6 @@ public class SaveManager {
    GlobalSaveData global = SaveManager.loadGlobal();
    global.unlockedCGs.add(5); // ปลดล็อกรูป ID 5
    SaveManager.saveGlobal(global);
+
+
+   55555555555555555
