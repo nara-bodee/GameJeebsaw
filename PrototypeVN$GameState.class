@@ -1,0 +1,20 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.util.HashMap;
+import java.util.Map;
+
+class PrototypeVN$GameState {
+   int affection = 0;
+   String playerName = "Player";
+   final Map<String, Boolean> flags = new HashMap();
+
+   PrototypeVN$GameState() {
+   }
+
+   boolean flag(String var1) {
+      return (Boolean)this.flags.getOrDefault(var1, false);
+   }
+
+   void setFlag(String var1, boolean var2) {
+      this.flags.put(var1, var2);
+   }
+}
