@@ -1,2 +1,0 @@
-# GameJeebsaw
-for education
