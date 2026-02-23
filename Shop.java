@@ -31,12 +31,12 @@ class Item {
 }
 
     private Item[] items = {
-            new Item("ดอกกุหลาบ", 150, "/rose.png"),
-            new Item("ปืน", 180, "/47.png"),
-            new Item("ยาเพิ่มพลัง", 300, "/AC.png"),
-            new Item("ดาบ", 120, "/sword.png"),
-            new Item("ไก่", 250, "/chicken.png"),
-            new Item("เพชร", 400, "/Daimon.png")
+            new Item("ดอกกุหลาบ", 150, "images/rose.png"),
+            new Item("ปืน", 180, "images/47.png"),
+            new Item("ยาเพิ่มพลัง", 300, "images/AC.png"),
+            new Item("ดาบ", 120, "images/sword.png"),
+            new Item("ไก่", 250, "images/chicken.png"),
+            new Item("เพชร", 400, "images/Daimon.png")
     };
 
     // ================= MAIN =================
