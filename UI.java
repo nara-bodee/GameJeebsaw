@@ -1,290 +1,313 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.*;
-import java.io.File;
 
 public class UI extends JFrame {
 
-    CardLayout card = new CardLayout();
-    JPanel root = new JPanel(card);
+    JLayeredPane layeredPane = new JLayeredPane();
 
-    Font italianno;
-    Font sarabun;
-    Font sarabunBold;
+    JPanel startLayer;
+    JPanel gameLayer;
+
+    ImageIcon bgImage = new ImageIcon("bg.jpg");
+    ImageIcon girlImage = new ImageIcon("girl.png");
 
     public UI() {
-        loadFonts();
 
-        setTitle("Dating Game UI");
-        setSize(1200, 800);
+        setTitle("เกมจีบสาว");
+        setSize(1280, 820);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        root.add(startPage(), "start");
-        root.add(gamePage(), "game");
-        root.add(pauseOverlay(), "pause");
-        root.add(savePage(), "save");
-        root.add(shopPage(), "shop");
+        layeredPane.setLayout(null);
+        layeredPane.setBounds(0,0,1280,820);
 
-        add(root);
-        card.show(root, "start");
+        startLayer = createStartScene();
+        gameLayer = createGameScene();
+
+        layeredPane.add(startLayer, Integer.valueOf(0));
+        layeredPane.add(gameLayer, Integer.valueOf(1));
+
+        gameLayer.setVisible(false);
+
+        add(layeredPane);
         setVisible(true);
     }
 
-    // ================= LOAD FONT =================
-    void loadFonts() {
-        try {
-            italianno = Font.createFont(Font.TRUETYPE_FONT, new File("Italianno-Regular.ttf")).deriveFont(36f);
-            sarabun = Font.createFont(Font.TRUETYPE_FONT, new File("Sarabun-Regular.ttf")).deriveFont(20f);
-            sarabunBold = Font.createFont(Font.TRUETYPE_FONT, new File("Sarabun-Bold.ttf")).deriveFont(22f);
-        } catch (Exception e) {
-            italianno = new Font("Serif", Font.PLAIN, 36);
-            sarabun = new Font("SansSerif", Font.PLAIN, 20);
-            sarabunBold = new Font("SansSerif", Font.BOLD, 22);
-        }
-    }
+    // ================= START =================
+    JPanel createStartScene() {
 
-    // ================= START PAGE =================
-    JPanel startPage() {
-        JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(35,45,95));
-
-        panel.add(menuButton("Start game", 420, 350, e->card.show(root,"game")));
-        panel.add(menuButton("Load save", 420, 420, e->card.show(root,"save")));
-        panel.add(menuButton("Exit", 420, 490, e->System.exit(0)));
-
-        return panel;
-    }
-
-    // ================= GAME PAGE =================
-    JPanel gamePage() {
-        JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(60,70,120));
-
-        // Top Bar
-        RoundedPanel top = new RoundedPanel(50,new Color(255,120,160,230));
-        top.setBounds(40,20,1120,70);
-        top.setLayout(null);
-
-        JLabel hearts = new JLabel("❤ ❤ ❤ ❤ ❤ ❤ ❤ ❤ ❤ ❤");
-        hearts.setFont(sarabunBold);
-        hearts.setForeground(Color.RED);
-        hearts.setBounds(30,15,300,40);
-
-        JLabel day = new JLabel("1");
-        day.setFont(sarabunBold);
-        day.setForeground(Color.WHITE);
-        day.setBounds(550,15,100,40);
-
-        JLabel time = new JLabel("17.00");
-        time.setFont(sarabunBold);
-        time.setForeground(Color.WHITE);
-        time.setBounds(1000,15,100,40);
-
-        GradientButton menu = smallMenuButton();
-        menu.setBounds(1060,15,50,40);
-        menu.addActionListener(e->card.show(root,"pause"));
-
-        top.add(hearts); top.add(day); top.add(time); top.add(menu);
-
-        // Choices
-        panel.add(choiceButton("ตัวเลือกที่ 1",450,300));
-        panel.add(choiceButton("ตัวเลือกที่ 2",450,370));
-
-        // Dialogue Box
-        RoundedPanel dialogue = new RoundedPanel(60,new Color(255,255,255,220));
-        dialogue.setBounds(200,560,800,170);
-        dialogue.setLayout(null);
-
-        JLabel text = new JLabel("เราดีใจ ......");
-        text.setFont(sarabun);
-        text.setBounds(40,60,700,40);
-
-        dialogue.add(text);
-
-        panel.add(top);
-        panel.add(dialogue);
-
-        return panel;
-    }
-
-    // ================= PAUSE =================
-    JPanel pauseOverlay() {
-    JPanel overlay = new JPanel(null) {
-        protected void paintComponent(Graphics g) {
+    JPanel p = new JPanel(null){
+        protected void paintComponent(Graphics g){
             super.paintComponent(g);
+            g.drawImage(bgImage.getImage(),0,0,1280,820,null);
+
+            // ใส่ layer มืดทับภาพให้ดูเหมือนในรูป
             Graphics2D g2 = (Graphics2D) g;
-            g2.setColor(new Color(0, 0, 0, 170));
-            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.setColor(new Color(20,30,70,180));
+            g2.fillRect(0,0,getWidth(),getHeight());
         }
     };
 
-    int boxWidth = 420;
-    int boxHeight = 460;
+    p.setBounds(0,0,1280,820);
 
-    RoundedPanel box = new RoundedPanel(80, new Color(230, 90, 130, 240));
-    box.setBounds(
-            (1200 - boxWidth) / 2,
-            (800 - boxHeight) / 2,
-            boxWidth,
-            boxHeight
-    );
-    box.setLayout(null);
+    JButton start = pinkButton("Start game", 200, 350);
+    start.addActionListener(e -> {
+        startLayer.setVisible(false);
+        gameLayer.setVisible(true);
+    });
 
-    int btnWidth = 280;
-    int btnHeight = 65;
-    int startY = 140;
-    int gap = 90;
+    JButton exit = pinkButton("Exit", 200, 430);
+    exit.addActionListener(e -> System.exit(0));
 
-    GradientButton save = new GradientButton("Save game");
-    save.setFont(italianno.deriveFont(40f));
-    save.setBounds((boxWidth - btnWidth) / 2, startY, btnWidth, btnHeight);
+    p.add(start);
+    p.add(exit);
 
-    GradientButton load = new GradientButton("Load save");
-    load.setFont(italianno.deriveFont(40f));
-    load.setBounds((boxWidth - btnWidth) / 2, startY + gap, btnWidth, btnHeight);
-
-    GradientButton exit = new GradientButton("Exit");
-    exit.setFont(italianno.deriveFont(40f));
-    exit.setBounds((boxWidth - btnWidth) / 2, startY + gap * 2, btnWidth, btnHeight);
-
-    JButton close = new JButton("✕");
-    close.setFont(new Font("Arial", Font.BOLD, 18));
-    close.setForeground(Color.WHITE);
-    close.setBackground(new Color(40, 40, 40));
-    close.setFocusPainted(false);
-    close.setBounds(boxWidth - 55, 20, 35, 35);
-    close.setBorder(BorderFactory.createEmptyBorder());
-    close.addActionListener(e -> card.show(root, "game"));
-
-    box.add(save);
-    box.add(load);
-    box.add(exit);
-    box.add(close);
-
-    overlay.add(box);
-    return overlay;
+    return p;
 }
 
-    // ================= SAVE =================
-    JPanel savePage(){
-        JPanel panel = blurPanel();
-        RoundedPanel box = popupBox(panel);
+    // ================= GAME =================
+    JPanel createGameScene() {
 
-        box.add(choiceButton("17.00 / 22 / 2 / 2565",100,120));
-        box.add(choiceButton("18.00 / 21 / 1 / 2565",100,190));
-        box.add(choiceButton("20.00 / 25 / 31 / 2564",100,260));
-
-        return panel;
-    }
-
-    // ================= SHOP =================
-    JPanel shopPage(){
-        JPanel panel = blurPanel();
-        RoundedPanel box = popupBox(panel);
-
-        int x=100,y=120;
-        for(int i=0;i<6;i++){
-            GradientButton item = new GradientButton("150  buy");
-            item.setBounds(x,y,180,100);
-            box.add(item);
-            x+=220;
-            if(i==2){ x=100; y+=140; }
-        }
-        return panel;
-    }
-
-    // ================= HELPERS =================
-
-    GradientButton menuButton(String text,int x,int y,ActionListener act){
-        GradientButton b = new GradientButton(text);
-        b.setFont(italianno);
-        b.setBounds(x,y,350,60);
-        b.addActionListener(act);
-        return b;
-    }
-
-    GradientButton choiceButton(String text,int x,int y){
-        GradientButton b = new GradientButton(text);
-        b.setFont(sarabunBold);
-        b.setBounds(x,y,300,55);
-        return b;
-    }
-
-    GradientButton smallMenuButton(){
-        GradientButton b = new GradientButton("≡");
-        b.setFont(sarabunBold);
-        return b;
-    }
-
-    JPanel blurPanel(){
-        JPanel panel = new JPanel(null){
+        JPanel p = new JPanel(null){
             protected void paintComponent(Graphics g){
                 super.paintComponent(g);
-                g.setColor(new Color(0,0,0,120));
-                g.fillRect(0,0,getWidth(),getHeight());
+                g.drawImage(bgImage.getImage(),0,0,1280,820,null);
             }
         };
+        p.setBounds(0,0,1280,820);
+
+        // TOP BAR
+        JPanel topBar = new JPanel(null);
+        topBar.setBounds(0, 0, 1280, 100);
+        topBar.setOpaque(false);
+
+        topBar.add(ovalLabel("📅 1", 40, 25));
+        topBar.add(ovalLabel("⏰ 17.00", 200, 25));
+        p.add(topBar);
+
+        JLabel girl = new JLabel(girlImage);
+        girl.setBounds(450,150,400,500);
+        p.add(girl);
+
+        JButton shop = circleButton("🛒", 50, 200);
+        JButton menu = circleButton("≡", 1180, 20);
+
+        p.add(shop);
+        p.add(menu);
+
+        int y = 150;
+        for(int i=1;i<=5;i++){
+            JButton b = purpleButton("ตัวเลือกที่ " + i, 950, y);
+            y += 80;
+            p.add(b);
+        }
+
+        JPanel dialogue = createDialogueBox(
+                "สาวน้อย",
+                "สวัสดี... วันนี้อากาศดีนะ นายมาหาฉันอีกแล้วเหรอ?"
+        );
+        p.add(dialogue);
+
+        // POPUP MENU
+        JPanel menuPopup = createPopup();
+        menuPopup.setVisible(false);
+        p.add(menuPopup);
+
+        menu.addActionListener(e -> menuPopup.setVisible(true));
+
+        return p;
+    }
+
+    // ================= POPUP =================
+    JPanel createPopup(){
+
+        JPanel panel = new JPanel(){
+            protected void paintComponent(Graphics g){
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                GradientPaint gp = new GradientPaint(
+                        0,0,new Color(255,120,160,220),
+                        getWidth(),getHeight(),
+                        new Color(120,100,255,220)
+                );
+
+                g2.setPaint(gp);
+                g2.fillRoundRect(0,0,getWidth(),getHeight(),40,40);
+            }
+        };
+
+        panel.setLayout(null);
+        panel.setBounds(390,180,500,450);
+
+        JButton save = purpleButton("Save game",120,120);
+        JButton load = purpleButton("Load save",120,200);
+        JButton exit = purpleButton("Exit",120,280);
+
+        JButton close = new JButton("X");
+        close.setBounds(440,10,50,50);
+        close.setBackground(Color.BLACK);
+        close.setForeground(Color.WHITE);
+        close.setFocusPainted(false);
+        close.addActionListener(e-> panel.setVisible(false));
+
+        panel.add(save);
+        panel.add(load);
+        panel.add(exit);
+        panel.add(close);
+
         return panel;
     }
 
-    RoundedPanel popupBox(JPanel panel){
-        RoundedPanel box = new RoundedPanel(60,new Color(255,100,150,220));
-        box.setBounds(300,150,600,500);
-        box.setLayout(null);
-        panel.add(box);
+    // ================= DIALOGUE =================
+    JPanel createDialogueBox(String name, String text){
 
-        JButton close = new JButton("X");
-        close.setBounds(520,20,50,40);
-        close.addActionListener(e->card.show(root,"game"));
-        box.add(close);
+        JPanel panel = new JPanel(){
+            protected void paintComponent(Graphics g){
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
 
-        return box;
+                g2.setColor(new Color(255,255,255,230));
+                g2.fillRoundRect(0,0,getWidth()-10,getHeight()-10,40,40);
+                g2.dispose();
+            }
+        };
+
+        panel.setLayout(null);
+        panel.setOpaque(false);
+        panel.setBounds(200,600,880,180);
+
+        JLabel nameLabel = new JLabel(name);
+        nameLabel.setBounds(40,10,200,40);
+        nameLabel.setOpaque(true);
+        nameLabel.setBackground(new Color(255,120,160));
+        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setFont(new Font("Tahoma",Font.BOLD,18));
+        nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JTextArea dialogueText = new JTextArea(text);
+        dialogueText.setBounds(40,60,780,80);
+        dialogueText.setFont(new Font("Tahoma",Font.PLAIN,18));
+        dialogueText.setLineWrap(true);
+        dialogueText.setWrapStyleWord(true);
+        dialogueText.setOpaque(false);
+        dialogueText.setEditable(false);
+
+        panel.add(nameLabel);
+        panel.add(dialogueText);
+
+        return panel;
     }
 
-    // ================= CUSTOM COMPONENTS =================
-
-    class RoundedPanel extends JPanel{
-        int radius; Color bg;
-        RoundedPanel(int r,Color c){radius=r;bg=c;setOpaque(false);}
-        protected void paintComponent(Graphics g){
-            Graphics2D g2=(Graphics2D)g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(bg);
-            g2.fillRoundRect(0,0,getWidth(),getHeight(),radius,radius);
-        }
+    // ================= DESIGN =================
+    JButton pinkButton(String text,int x,int y){
+        RoundedButton b = new RoundedButton(
+                text,
+                new Color(255,120,160),
+                new Color(255,150,180)
+        );
+        b.setBounds(x,y,250,60);
+        return b;
     }
 
-    class GradientButton extends JButton{
-        boolean hover=false;
-        GradientButton(String text){
-            super(text);
-            setContentAreaFilled(false);
-            setFocusPainted(false);
-            setForeground(Color.WHITE);
-            addMouseListener(new MouseAdapter(){
-                public void mouseEntered(MouseEvent e){hover=true;repaint();}
-                public void mouseExited(MouseEvent e){hover=false;repaint();}
-            });
-        }
-        protected void paintComponent(Graphics g){
-            Graphics2D g2=(Graphics2D)g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-            GradientPaint gp = hover ?
-                    new GradientPaint(0,0,new Color(170,120,255),
-                            0,getHeight(),new Color(255,160,220)) :
-                    new GradientPaint(0,0,new Color(120,90,255),
-                            0,getHeight(),new Color(255,120,200));
-            g2.setPaint(gp);
-            g2.fillRoundRect(0,0,getWidth(),getHeight(),50,50);
-            super.paintComponent(g);
-        }
+    JButton purpleButton(String text,int x,int y){
+        RoundedButton b = new RoundedButton(
+                text,
+                new Color(120,100,255),
+                new Color(150,130,255)
+        );
+        b.setBounds(x,y,260,60);
+        return b;
     }
 
-    public static void main(String[] args){
+    JButton circleButton(String text,int x,int y){
+        RoundedButton b = new RoundedButton(
+                text,
+                new Color(255,100,150),
+                new Color(255,130,170)
+        );
+        b.setBounds(x,y,60,60);
+        return b;
+    }
+
+    JLabel ovalLabel(String text, int x, int y){
+        JLabel label = new JLabel(text, SwingConstants.CENTER){
+            protected void paintComponent(Graphics g){
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(200,80,130));
+                g2.fillRoundRect(0,0,getWidth(),getHeight(),50,50);
+                super.paintComponent(g);
+            }
+        };
+        label.setBounds(x,y,150,50);
+        label.setForeground(Color.WHITE);
+        label.setFont(new Font("Tahoma",Font.BOLD,18));
+        label.setOpaque(false);
+        return label;
+    }
+
+    public static void main(String[] args) {
         new UI();
     }
+}
+
+// ================= CUSTOM ROUNDED BUTTON =================
+
+class RoundedButton extends JButton {
+
+    private Color normalColor;
+    private Color hoverColor;
+    private boolean isHover = false;
+    private int radius = 30;
+
+    public RoundedButton(String text, Color normal, Color hover) {
+        super(text);
+        this.normalColor = normal;
+        this.hoverColor = hover;
+
+        setFocusPainted(false);
+        setBorderPainted(false);
+        setContentAreaFilled(false);
+        setOpaque(false);
+        setForeground(Color.WHITE);
+        setFont(new Font("Tahoma", Font.BOLD, 18));
+        setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                isHover = true;
+                repaint();
+            }
+            public void mouseExited(MouseEvent e) {
+                isHover = false;
+                repaint();
+            }
+        });
+    }
+
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+
+        GradientPaint gp = new GradientPaint(
+                0,0,
+                isHover ? hoverColor.brighter() : normalColor,
+                getWidth(),getHeight(),
+                isHover ? hoverColor : normalColor.darker()
+        );
+
+        g2.setPaint(gp);
+        g2.fillRoundRect(0, 0, getWidth()-5, getHeight()-5, radius, radius);
+
+        g2.dispose();
+        super.paintComponent(g);
+    }
+
+    protected void paintBorder(Graphics g) {}
 }
