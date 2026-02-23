@@ -2,15 +2,15 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.HashMap;
-public class Shop {
 
+public class Shop {
     private JFrame frame;
     private JLayeredPane layeredPane;
     private JPanel overlay;
     private JLabel moneyLabel;
     private JButton buyButton;
     private HashMap<Item, Integer> inventory = new HashMap<>();
-    private int money = 500;
+    private int money = 1000;
     private Item selectedItem = null;
     private JPanel selectedCard = null;
 
@@ -45,14 +45,15 @@ class Item {
     }
 
     public void createUI() {
-        UIManager.put("Label.font", new Font("Tahoma", Font.PLAIN, 16));
-        UIManager.put("Button.font", new Font("Tahoma", Font.PLAIN, 16));
-        UIManager.put("OptionPane.messageFont", new Font("Tahoma", Font.PLAIN, 16));
-        UIManager.put("OptionPane.buttonFont", new Font("Tahoma", Font.PLAIN, 16));
+        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("Button.font", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("OptionPane.messageFont", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("OptionPane.buttonFont", new Font("TH Sarabun New", Font.PLAIN, 20));
         frame = new JFrame("SHOP");
         frame.setSize(1366, 768);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
+
 
         layeredPane = new JLayeredPane();
         layeredPane.setLayout(null);
@@ -82,16 +83,16 @@ class Item {
                             RenderingHints.VALUE_ANTIALIAS_ON);
 
         Color base = new Color(240, 120, 160);
-Color hoverColor = base.brighter();      // อ่อนขึ้น
-Color pressedColor = base;               // กดให้กลับสีปกติ
+        Color hoverColor = base.brighter();      // อ่อนขึ้น
+        Color pressedColor = base;               // กดให้กลับสีปกติ
 
         if (pressed) {
-    g2.setColor(pressedColor);
-} else if (hover) {
-    g2.setColor(hoverColor);
-} else {
-    g2.setColor(base);
-}
+            g2.setColor(pressedColor);
+        } else if (hover) {
+            g2.setColor(hoverColor);
+        } else {
+            g2.setColor(base);
+        }
 
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
 
@@ -154,9 +155,11 @@ Color pressedColor = base;               // กดให้กลับสีป
 
         JButton openInventory = new JButton("INVENTORY");
         openInventory.setBounds(50, 380, 150, 60);
-        openInventory.setFont(new Font("Tahoma", Font.BOLD, 16));
+        openInventory.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
         openInventory.addActionListener(e -> showInventory());
-
+        // ซ่อนปุ่ม -----------------------------------------------------------------------------------------
+        openInventory.setVisible(false); // ซ่อนปุ่ม -----------------------------------------------------------------------------------------
+        // ซ่อนปุ่ม -----------------------------------------------------------------------------------------
         mainPanel.add(openInventory);
     }
 
@@ -182,7 +185,8 @@ Color pressedColor = base;               // กดให้กลับสีป
         // Money label
         moneyLabel = new JLabel("Money: " + money);
         moneyLabel.setForeground(Color.WHITE);
-        moneyLabel.setBounds(30, 20, 200, 30);
+        moneyLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 28));
+        moneyLabel.setBounds(30, 20, 300, 40);
         popup.add(moneyLabel);
 
         // Create items
@@ -207,8 +211,8 @@ Color pressedColor = base;               // กดให้กลับสีป
         // BUY button
         buyButton = new JButton("BUY") {
 
-    private boolean hover = false;
-    private boolean pressed = false;
+        private boolean hover = false;
+        private boolean pressed = false;
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -277,7 +281,7 @@ Color pressedColor = base;               // กดให้กลับสีป
 };
 
 buyButton.setBounds(290, 520, 140, 45);
-buyButton.setFont(new Font("Tahoma", Font.BOLD, 18));
+buyButton.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
 buyButton.setFocusPainted(false);
 buyButton.setContentAreaFilled(false);
 buyButton.setBorderPainted(false);
@@ -316,14 +320,14 @@ popup.add(buyButton);
     // ================= ชื่อสินค้า =================
     JLabel nameLabel = new JLabel(item.name, SwingConstants.CENTER);
     nameLabel.setForeground(Color.WHITE);
-    nameLabel.setFont(new Font("Tahoma", Font.BOLD, 15));
-    nameLabel.setBounds(10, 110, CARD_WIDTH - 20, 25);
+    nameLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
+    nameLabel.setBounds(10, 120, CARD_WIDTH - 20, 25);
 
     // ================= ราคา =================
     JLabel price = new JLabel(item.price + " G", SwingConstants.CENTER);
     price.setOpaque(true);
     price.setBackground(new Color(255, 220, 120));
-    price.setBounds((CARD_WIDTH - 90) / 2, 160, 90, 32);
+    price.setBounds((CARD_WIDTH - 90) / 2, 155, 90, 32);
 
     // ================= Badge =================
     CircleBadge badge = new CircleBadge(String.valueOf(item.quantity));
@@ -381,7 +385,7 @@ private void buyItem() {
         inventory.put(selectedItem,
         inventory.getOrDefault(selectedItem, 0) + 1);
         moneyLabel.setText("Money: " + money);
-
+        
         // 🔥 อัปเดต badge
         selectedItem.badge.setText(String.valueOf(selectedItem.quantity));
 
@@ -415,7 +419,7 @@ private void buyItem() {
                 g2.fillOval(0, 0, getWidth(), getHeight());
 
                 g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Arial", Font.BOLD, 18));
+                g2.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
                 FontMetrics fm = g2.getFontMetrics();
                 int x = (getWidth() - fm.stringWidth("X")) / 2;
                 int y = (getHeight() + fm.getAscent()) / 2 - 3;
@@ -469,7 +473,7 @@ private void buyItem() {
     public CircleBadge(String text) {
         super(text, SwingConstants.CENTER);
         setForeground(Color.WHITE);
-        setFont(new Font("Tahoma", Font.BOLD, 14));
+        setFont(new Font("TH Sarabun New", Font.BOLD, 20));
         setPreferredSize(new Dimension(35, 35));
         setSize(35, 35);
         setOpaque(false);
@@ -477,7 +481,6 @@ private void buyItem() {
 
     @Override
     protected void paintComponent(Graphics g) {
-
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
@@ -485,7 +488,6 @@ private void buyItem() {
         // วาดวงกลมพื้นหลัง
         g2.setColor(new Color(255, 0, 100));
         g2.fillOval(0, 0, getWidth(), getHeight());
-
         super.paintComponent(g);
     }
 }
