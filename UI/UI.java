@@ -1,3 +1,4 @@
+package UI;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -11,6 +12,8 @@ public class UI extends JFrame {
 
     ImageIcon bgImage = new ImageIcon("bg.jpg");
     ImageIcon girlImage = new ImageIcon("girl.png");
+
+    private JTextArea dialogueText;
 
     public UI() {
 
@@ -91,6 +94,7 @@ public class UI extends JFrame {
         p.add(girl);
 
         JButton shop = circleButton("🛒", 50, 200);
+        shop.addActionListener(e -> JOptionPane.showMessageDialog(UI.this, "ร้านค้ามีไอเทมให้ซื้อ!"));
         JButton menu = circleButton("≡", 1180, 20);
 
         p.add(shop);
@@ -99,6 +103,16 @@ public class UI extends JFrame {
         int y = 150;
         for(int i=1;i<=5;i++){
             JButton b = purpleButton("ตัวเลือกที่ " + i, 950, y);
+            int choice = i;
+            b.addActionListener(e -> {
+                switch(choice){
+                    case 1: dialogueText.setText("สาวน้อย: ดีจังเลย! นายชอบกินอะไรเหรอ?"); break;
+                    case 2: dialogueText.setText("สาวน้อย: อืม... นายมาจากไหนเหรอ?"); break;
+                    case 3: dialogueText.setText("สาวน้อย: วันนี้อากาศดีมากเลยนะ"); break;
+                    case 4: dialogueText.setText("สาวน้อย: นายมีงานอดิเรกอะไรบ้าง?"); break;
+                    case 5: dialogueText.setText("สาวน้อย: อยากไปเดินเล่นด้วยกันไหม?"); break;
+                }
+            });
             y += 80;
             p.add(b);
         }
@@ -143,8 +157,11 @@ public class UI extends JFrame {
         panel.setBounds(390,180,500,450);
 
         JButton save = purpleButton("Save game",120,120);
+        save.addActionListener(e -> JOptionPane.showMessageDialog(UI.this, "บันทึกเกมแล้ว!"));
         JButton load = purpleButton("Load save",120,200);
+        load.addActionListener(e -> JOptionPane.showMessageDialog(UI.this, "โหลดเซฟแล้ว!"));
         JButton exit = purpleButton("Exit",120,280);
+        exit.addActionListener(e -> System.exit(0));
 
         JButton close = new JButton("X");
         close.setBounds(440,10,50,50);
@@ -198,6 +215,8 @@ public class UI extends JFrame {
 
         panel.add(nameLabel);
         panel.add(dialogueText);
+
+        this.dialogueText = dialogueText;
 
         return panel;
     }
