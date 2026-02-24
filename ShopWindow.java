@@ -3,7 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.HashMap;
 
-public class Shop {
+public class ShopWindow {
     private JFrame frame;
     private JLayeredPane layeredPane;
     private JPanel overlay;
@@ -31,17 +31,17 @@ class Item {
 }
 
     private Item[] items = {
-            new Item("ดอกกุหลาบ", 150, "images/rose.png"),
-            new Item("ปืน", 180, "images/47.png"),
-            new Item("ยาเพิ่มพลัง", 300, "images/AC.png"),
-            new Item("ดาบ", 120, "images/sword.png"),
-            new Item("ไก่", 250, "images/chicken.png"),
-            new Item("เพชร", 400, "images/Daimon.png")
+            new Item("ดอกกุหลาบ", 100, "images/rose.png"),
+            new Item("สมุดคณิตศาสตร์", 100, "images/book.png"),
+            new Item("เลม่อนโซดาสุดซ่า", 50, "images/lemon_soda.png"),
+            new Item("ร่มคันใหญ่", 100, "images/umbrella.png"),
+            new Item("พวงกุญแจตุ๊กตา", 50, "images/baby.png"),
+            new Item("เพชรมายา", 1000000, "images/Daimon.png")
     };
 
     // ================= MAIN =================
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Shop().createUI());
+        SwingUtilities.invokeLater(() -> new ShopWindow().createUI());
     }
 
     public void createUI() {
