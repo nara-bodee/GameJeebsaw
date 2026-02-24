@@ -7,7 +7,7 @@ public class MainApp {
     }
 
     public static void shop() {
-        UI_SHOP shopWindow = new UI_SHOP();
+        ShopWindow shopWindow = new ShopWindow();
         shopWindow.createUI();
     }
 }
