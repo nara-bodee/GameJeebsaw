@@ -3,7 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.HashMap;
 
-public class ShopWindow {
+public class UI_SHOP {
     private JFrame frame;
     private JLayeredPane layeredPane;
     private JPanel overlay;
@@ -41,7 +41,7 @@ class Item {
 
     // ================= MAIN =================
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new ShopWindow().createUI());
+        SwingUtilities.invokeLater(() -> new UI_SHOP().createUI());
     }
 
     public void createUI() {
