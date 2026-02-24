@@ -110,9 +110,11 @@ public class GameWindow extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    private int introIndex = 0; // 🌟 เพิ่มตัวแปรนี้ไว้นับหน้าฉาก
+
     private void advanceDay() {
-        if (currentDay == 7 && activeEvent == null) {
-            return; // ป้องกันการกดต่อถ้าเกมจบแล้ว
+        if (currentDay >= 7 && activeEvent == null) {
+            return; 
         }
 
         if (activeEvent == null) {
@@ -121,22 +123,34 @@ public class GameWindow extends JFrame {
             
             if (activeEvent != null) {
                 eventStep = 1;
-                dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroText() + "</html>");
-                changeBackground(activeEvent.getIntroBgPath());
+                introIndex = 0; // เริ่มที่ฉากที่ 1
+                dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
                 nextDayButton.setText("ไปต่อ ⏭"); 
             }
         } 
         else if (eventStep == 1) {
-            if (activeEvent.getChoices().isEmpty()) {
-                activeEvent = null;
-                eventStep = 0;
+            introIndex++; // เปลี่ยนเป็นฉากต่อไป
+            
+            // เช็คว่ายังมีฉาก Intro ให้เปลี่ยนอีกไหม?
+            if (introIndex < activeEvent.getIntroTexts().size()) {
+                // ถ้ามี โชว์ข้อความและรูปหน้าต่อไปเลย
+                dialogText.setText("<html>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
             } else {
-                eventStep = 2;
-                dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
-                changeBackground(activeEvent.getQuestionBgPath());
-                
-                showChoices(activeEvent.getChoices()); 
-                nextDayButton.setEnabled(false); 
+                // ถ้าหมด Intro แล้ว ก็เข้าสู่หน้าคำถามและโชว์ปุ่มตัวเลือก
+                if (activeEvent.getChoices().isEmpty()) {
+                    activeEvent = null;
+                    eventStep = 0;
+                    advanceDay(); 
+                } else {
+                    eventStep = 2;
+                    dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
+                    changeBackground(activeEvent.getQuestionBgPath());
+                    
+                    showChoices(activeEvent.getChoices()); 
+                    nextDayButton.setEnabled(false); 
+                }
             }
         } 
         else if (eventStep == 3) {
@@ -146,13 +160,12 @@ public class GameWindow extends JFrame {
             choicePanel.revalidate();
             choicePanel.repaint();
             
-            // เช็คว่าถ้าจบวันที่ 7 แล้ว ให้ล็อกเกมเลย
             if (currentDay == 7) {
                 dialogText.setText("<html><b>จบเกมแล้ว!</b> คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
                 nextDayButton.setText("จบเกม");
                 nextDayButton.setEnabled(false);
             } else {
-                advanceDay(); // ข้ามไปโหลด Event วันถัดไปโดยอัตโนมัติ
+                advanceDay(); 
             }
         }
     }
