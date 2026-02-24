@@ -3,7 +3,8 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class UI extends JFrame {
-
+    private final int BASE_WIDTH = 1280;
+    private final int BASE_HEIGHT = 720;
     JLayeredPane layeredPane = new JLayeredPane();
 
     JPanel startLayer;
@@ -13,43 +14,153 @@ public class UI extends JFrame {
     ImageIcon girlImage = new ImageIcon("girl.png");
 
     public UI() {
+        GameSettings settings = GameSettings.getInstance();
+        int currentWidth = settings.getScreenWidth();
+        int currentHeight = settings.getScreenHeight();
 
         setTitle("เกมจีบสาว");
-        setSize(1280, 820);
-        setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
+        // --- 1. ปิด Auto Layout และใส่พื้นหลังดำกันปุ่มตกขอบ ---
+        getContentPane().setLayout(null);
+        getContentPane().setBackground(Color.BLACK); 
+
+        // --- 2. ตั้งขนาดหน้าต่าง ---
+        getContentPane().setPreferredSize(new Dimension(currentWidth, currentHeight));
+        pack();
+
         layeredPane.setLayout(null);
-        layeredPane.setBounds(0,0,1280,820);
+        // สร้าง UI แผ่นกระดาษหลักที่ขนาด 1280x720 เสมอ
+        layeredPane.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
         startLayer = createStartScene();
         gameLayer = createGameScene();
 
         layeredPane.add(startLayer, Integer.valueOf(0));
         layeredPane.add(gameLayer, Integer.valueOf(1));
-
         gameLayer.setVisible(false);
 
-        add(layeredPane);
+        getContentPane().add(layeredPane);
+
+        // จำพิกัดดั้งเดิม
+        tagOriginalBounds(layeredPane);
+
+        // --- 3. บังคับย่อขยายจาก "พื้นที่หน้าต่างที่กางได้จริง" เท่านั้น ---
+        applyScale(getContentPane().getWidth(), getContentPane().getHeight());
+
+        setLocationRelativeTo(null);
         setVisible(true);
     }
+    // ================= RESIZE SCREEN (RESPONSIVE) =================
+    // ================= RESIZE SCREEN (RESPONSIVE) =================
+    private void changeScreenSize(int newWidth, int newHeight) {
+        GameSettings.getInstance().applyResolution(newWidth, newHeight, false);
 
+        // ขอกางหน้าต่างขนาดใหม่
+        getContentPane().setPreferredSize(new Dimension(newWidth, newHeight));
+        pack();
+        setLocationRelativeTo(null); 
+
+        // ดึงขนาดจริงที่ Windows อนุญาต (ป้องกันปัญหาเลือกจอใหญ่ 1920 แต่หน้าจอคอมจริงเล็กกว่า)
+        int actualWidth = getContentPane().getWidth();
+        int actualHeight = getContentPane().getHeight();
+
+        applyScale(actualWidth, actualHeight);
+    }
+
+    // เมธอดสำหรับคำนวณและสั่งย่อขยาย
+    // เมธอดสำหรับคำนวณและสั่งย่อขยาย
+    private void applyScale(int actualWidth, int actualHeight) {
+        // ใช้ Math.min รักษาสัดส่วน 16:9 ภาพจะไม่เบี้ยว ปุ่มจะไม่เป็นวงรี
+        double scaleX = (double) actualWidth / BASE_WIDTH;
+        double scaleY = (double) actualHeight / BASE_HEIGHT;
+        double scale = Math.min(scaleX, scaleY);
+
+        // คำนวณความกว้าง/สูงใหม่
+        int scaledWidth = (int) Math.round(BASE_WIDTH * scale);
+        int scaledHeight = (int) Math.round(BASE_HEIGHT * scale);
+
+        // คำนวณจุดจัดกึ่งกลาง (ทำให้มีขอบดำซ้ายขวา/บนล่าง คล้ายดูหนัง ถ้าจอสัดส่วนแปลกๆ)
+        int offsetX = (actualWidth - scaledWidth) / 2;
+        int offsetY = (actualHeight - scaledHeight) / 2;
+
+        // สั่งย่อปุ่มและฟอนต์ทุกชิ้น
+        scaleFromBase(layeredPane, scale);
+
+        // บังคับจัดตำแหน่ง Layer หลักให้อยู่ตรงกลางเป๊ะๆ ไม่ให้ตกขอบ
+        layeredPane.setBounds(offsetX, offsetY, scaledWidth, scaledHeight);
+        startLayer.setBounds(0, 0, scaledWidth, scaledHeight);
+        gameLayer.setBounds(0, 0, scaledWidth, scaledHeight);
+
+        revalidate();
+        repaint();
+    }
+    // เมธอดช่วยจำตำแหน่งและขนาดดั้งเดิมของ UI (รันครั้งเดียวตอนเปิดเกม)
+    // เมธอดช่วยจำตำแหน่ง ขนาด และ "ฟอนต์" ดั้งเดิมของ UI (รันครั้งเดียวตอนเปิดเกม)
+    private void tagOriginalBounds(Container container) {
+        if (container instanceof JComponent) {
+            JComponent comp = (JComponent) container;
+            // จำตำแหน่งและขนาดกล่อง
+            comp.putClientProperty("baseBounds", comp.getBounds());
+            
+            // จำรูปแบบและขนาดฟอนต์
+            if (comp.getFont() != null) {
+                comp.putClientProperty("baseFont", comp.getFont());
+            }
+        }
+        for (Component c : container.getComponents()) {
+            if (c instanceof Container) {
+                tagOriginalBounds((Container) c);
+            }
+        }
+    }
+
+    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณด้วยอัตราส่วน (กดย่อขยายกี่รอบก็ไม่เพี้ยน)
+    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณอัตราส่วน และย่อขนาดฟอนต์
+    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณอัตราส่วน และย่อขนาดฟอนต์
+    private void scaleFromBase(Container container, double scale) {
+        if (container instanceof JComponent) {
+            JComponent comp = (JComponent) container;
+            
+            Rectangle base = (Rectangle) comp.getClientProperty("baseBounds");
+            if (base != null) {
+                comp.setBounds(
+                        (int) Math.round(base.x * scale),
+                        (int) Math.round(base.y * scale),
+                        (int) Math.round(base.width * scale),
+                        (int) Math.round(base.height * scale)
+                );
+            }
+            
+            Font baseFont = (Font) comp.getClientProperty("baseFont");
+            if (baseFont != null) {
+                // เพิ่ม Math.max เพื่อป้องกัน Font ขนาดติดลบจนล่องหน
+                float newSize = Math.max(1.0f, (float) (baseFont.getSize() * scale * 0.95f));
+                comp.setFont(baseFont.deriveFont(newSize));
+            }
+        }
+        for (Component c : container.getComponents()) {
+            if (c instanceof Container) {
+                scaleFromBase((Container) c, scale);
+            }
+        }
+    }
     // ================= START =================
     JPanel createStartScene() {
 
     JPanel p = new JPanel(null){
         protected void paintComponent(Graphics g){
             super.paintComponent(g);
-            g.drawImage(bgImage.getImage(),0,0,1280,820,null);
+            // เปลี่ยนจาก 1280, 820 เป็น getWidth(), getHeight()
+            g.drawImage(bgImage.getImage(), 0, 0, getWidth(), getHeight(), null);
 
-            // ใส่ layer มืดทับภาพให้ดูเหมือนในรูป
             Graphics2D g2 = (Graphics2D) g;
             g2.setColor(new Color(20,30,70,180));
             g2.fillRect(0,0,getWidth(),getHeight());
         }
     };
 
-    p.setBounds(0,0,1280,820);
+    p.setBounds(0,0,1280,720);
 
     JButton start = pinkButton("Start game", 200, 350);
     start.addActionListener(e -> {
@@ -70,12 +181,13 @@ public class UI extends JFrame {
     JPanel createGameScene() {
 
         JPanel p = new JPanel(null){
-            protected void paintComponent(Graphics g){
+           protected void paintComponent(Graphics g){
                 super.paintComponent(g);
-                g.drawImage(bgImage.getImage(),0,0,1280,820,null);
+                // เปลี่ยนจาก 1280, 820 เป็น getWidth(), getHeight()
+                g.drawImage(bgImage.getImage(), 0, 0, getWidth(), getHeight(), null);
             }
         };
-        p.setBounds(0,0,1280,820);
+        p.setBounds(0, 0, 1280, 720);
 
         // TOP BAR
         JPanel topBar = new JPanel(null);
@@ -87,7 +199,7 @@ public class UI extends JFrame {
         p.add(topBar);
 
         JLabel girl = new JLabel(girlImage);
-        girl.setBounds(450,150,400,500);
+        girl.setBounds(450,100,400,500);
         p.add(girl);
 
         JButton shop = circleButton("🛒", 50, 200);
@@ -96,7 +208,7 @@ public class UI extends JFrame {
         p.add(shop);
         p.add(menu);
 
-        int y = 150;
+        int y = 120;
         for(int i=1;i<=5;i++){
             JButton b = purpleButton("ตัวเลือกที่ " + i, 950, y);
             y += 80;
@@ -107,6 +219,7 @@ public class UI extends JFrame {
                 "สาวน้อย",
                 "สวัสดี... วันนี้อากาศดีนะ นายมาหาฉันอีกแล้วเหรอ?"
         );
+        dialogue.setBounds(200, 520, 880, 180);
         p.add(dialogue);
 
         // POPUP MENU
@@ -121,41 +234,63 @@ public class UI extends JFrame {
 
     // ================= POPUP =================
     JPanel createPopup(){
-
         JPanel panel = new JPanel(){
             protected void paintComponent(Graphics g){
                 Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
-
-                GradientPaint gp = new GradientPaint(
-                        0,0,new Color(255,120,160,220),
-                        getWidth(),getHeight(),
-                        new Color(120,100,255,220)
-                );
-
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                GradientPaint gp = new GradientPaint(0,0,new Color(255,120,160,220), getWidth(),getHeight(), new Color(120,100,255,220));
                 g2.setPaint(gp);
                 g2.fillRoundRect(0,0,getWidth(),getHeight(),40,40);
             }
         };
 
         panel.setLayout(null);
-        panel.setBounds(390,180,500,450);
+        panel.setBounds(390, 150, 500, 450); // ปรับขนาดกล่อง Popup ให้พอดี
+        
+        // --- 1. กลุ่มปุ่มเมนูหลัก ---
+        JButton save = purpleButton("Save game", 120, 60);
+        JButton load = purpleButton("Load save", 120, 140);
+        JButton displayScale = purpleButton("Display Scale", 120, 220);
+        JButton exit = purpleButton("Exit", 120, 300);
 
-        JButton save = purpleButton("Save game",120,120);
-        JButton load = purpleButton("Load save",120,200);
-        JButton exit = purpleButton("Exit",120,280);
+        // --- 2. กลุ่มปุ่มเลือกขนาดจอ (ซ่อนไว้ตอนแรก) ---
+        // แนะนำให้ใช้ขนาดที่สัดส่วนใกล้เคียงกัน ภาพจะได้ไม่ยืด/หดจนผิดรูป
+        JButton size1 = purpleButton("1920 x 1080", 120, 60);
+        JButton size2 = purpleButton("1280 x 720", 120, 140); 
+        JButton size3 = purpleButton("960 x 540", 120, 220);
+        JButton backBtn = purpleButton("Back", 120, 300);
 
+        size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
+
+        // --- 3. ปุ่มปิด (X) ---
         JButton close = new JButton("X");
         close.setBounds(440,10,50,50);
-        close.setBackground(Color.BLACK);
-        close.setForeground(Color.WHITE);
-        close.setFocusPainted(false);
-        close.addActionListener(e-> panel.setVisible(false));
+        close.setBackground(Color.BLACK); close.setForeground(Color.WHITE); close.setFocusPainted(false);
+        close.addActionListener(e -> panel.setVisible(false));
 
-        panel.add(save);
-        panel.add(load);
-        panel.add(exit);
+        // --- 4. จัดการ Event สลับเมนู ---
+        displayScale.addActionListener(e -> {
+            // ซ่อนเมนูหลัก แสดงเมนูขนาดจอ
+            save.setVisible(false); load.setVisible(false); displayScale.setVisible(false); exit.setVisible(false);
+            size1.setVisible(true); size2.setVisible(true); size3.setVisible(true); backBtn.setVisible(true);
+        });
+
+        backBtn.addActionListener(e -> {
+            // ซ่อนเมนูขนาดจอ แสดงเมนูหลัก
+            size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
+            save.setVisible(true); load.setVisible(true); displayScale.setVisible(true); exit.setVisible(true);
+        });
+
+        // --- 5. Event การเปลี่ยนขนาดหน้าจอ ---
+        size1.addActionListener(e -> changeScreenSize(1920, 1080));
+        size2.addActionListener(e -> changeScreenSize(1280, 720));
+        size3.addActionListener(e -> changeScreenSize(960, 540));
+        
+        exit.addActionListener(e -> System.exit(0));
+
+        // แอดทุกปุ่มลงใน Panel
+        panel.add(save); panel.add(load); panel.add(displayScale); panel.add(exit);
+        panel.add(size1); panel.add(size2); panel.add(size3); panel.add(backBtn);
         panel.add(close);
 
         return panel;
