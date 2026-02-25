@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MainApp",
+            "request": "launch",
+            "mainClass": "main.MainApp",
+            "projectName": "GameJeebsaw_5607910b"
+        },
+        {
+            "type": "java",
             "name": "GameWindow",
             "request": "launch",
             "mainClass": "main.GameWindow",
