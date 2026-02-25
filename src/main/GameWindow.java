@@ -1,6 +1,15 @@
-import javax.swing.*;
+package main;
+
+import core.GameSettings;
+import core.Player;
 import java.awt.*;
 import java.util.List;
+import javax.swing.*;
+import shop.ShopWindow;
+import story.Choice;
+import story.EventManager;
+import story.GameEvent;
+import ui.UI;
 
 public class GameWindow extends JFrame {
 
@@ -29,7 +38,7 @@ public class GameWindow extends JFrame {
         player = new Player(); 
 
         // รูปหน้าปกเกม
-        backgroundImage = new ImageIcon("images_Story/ปก.png").getImage();
+        backgroundImage = new ImageIcon("../images_Story/ปก.png").getImage();
 
         JPanel mainScene = new JPanel() {
             @Override
@@ -68,6 +77,21 @@ public class GameWindow extends JFrame {
             }
         };
         mainScene.setLayout(new BorderLayout());
+
+        // เพิ่มปุ่ม menu มุมซ้ายบน
+        JButton menuButton = new JButton("⋮");
+        menuButton.setFont(new Font("Arial", Font.BOLD, 32));
+        menuButton.setForeground(Color.WHITE);
+        menuButton.setBackground(new Color(0, 0, 0, 150));
+        menuButton.setFocusPainted(false);
+        menuButton.setBorderPainted(false);
+        menuButton.setPreferredSize(new Dimension(50, 50));
+        menuButton.addActionListener(e -> showMenuDialog());
+        
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        topPanel.setOpaque(false);
+        topPanel.add(menuButton);
+        mainScene.add(topPanel, BorderLayout.NORTH);
 
         choicePanel = new JPanel(new GridBagLayout()); 
         choicePanel.setOpaque(false);
@@ -108,6 +132,108 @@ public class GameWindow extends JFrame {
         add(mainScene);
         setSize(800, 600); // กำหนดขนาดเริ่มต้น
         setLocationRelativeTo(null);
+    }
+
+    // แสดง Menu Dialog
+    private void showMenuDialog() {
+        JDialog menuDialog = new JDialog(this, "Menu", true);
+        menuDialog.setLayout(new GridLayout(3, 1, 10, 10));
+        menuDialog.setSize(300, 250);
+        menuDialog.setLocationRelativeTo(this);
+
+        Font menuFont = new Font("Leelawadee UI", Font.BOLD, 18);
+
+        // ปุ่ม Continue
+        JButton continueBtn = new JButton("Continue");
+        continueBtn.setFont(menuFont);
+        continueBtn.setBackground(new Color(100, 200, 100));
+        continueBtn.setForeground(Color.WHITE);
+        continueBtn.setFocusPainted(false);
+        continueBtn.addActionListener(e -> menuDialog.dispose());
+
+        // ปุ่ม Settings
+        JButton settingsBtn = new JButton("Settings");
+        settingsBtn.setFont(menuFont);
+        settingsBtn.setBackground(new Color(100, 150, 255));
+        settingsBtn.setForeground(Color.WHITE);
+        settingsBtn.setFocusPainted(false);
+        settingsBtn.addActionListener(e -> {
+            menuDialog.dispose();
+            showSettingsDialog();
+        });
+
+        // ปุ่ม Exit
+        JButton exitBtn = new JButton("Exit");
+        exitBtn.setFont(menuFont);
+        exitBtn.setBackground(new Color(255, 100, 100));
+        exitBtn.setForeground(Color.WHITE);
+        exitBtn.setFocusPainted(false);
+        exitBtn.addActionListener(e -> System.exit(0));
+
+        menuDialog.add(continueBtn);
+        menuDialog.add(settingsBtn);
+        menuDialog.add(exitBtn);
+
+        menuDialog.setVisible(true);
+    }
+
+    // แสดง Settings Dialog
+    private void showSettingsDialog() {
+        JDialog settingsDialog = new JDialog(this, "Settings", true);
+        settingsDialog.setLayout(new BorderLayout(10, 10));
+        settingsDialog.setSize(400, 300);
+        settingsDialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel titleLabel = new JLabel("เลือกความละเอียดหน้าจอ:");
+        titleLabel.setFont(new Font("Leelawadee UI", Font.BOLD, 16));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(titleLabel);
+        panel.add(Box.createVerticalStrut(20));
+
+        String[] resolutions = {"800x600", "1024x768", "1280x720", "1366x768", "1920x1080"};
+        JComboBox<String> resolutionBox = new JComboBox<>(resolutions);
+        resolutionBox.setFont(new Font("Leelawadee UI", Font.PLAIN, 14));
+        resolutionBox.setMaximumSize(new Dimension(200, 30));
+        resolutionBox.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        // ตั้งค่าเริ่มต้นตามความละเอียดปัจจุบัน
+        GameSettings settings = GameSettings.getInstance();
+        String currentRes = settings.getScreenWidth() + "x" + settings.getScreenHeight();
+        resolutionBox.setSelectedItem(currentRes);
+
+        panel.add(resolutionBox);
+        panel.add(Box.createVerticalStrut(30));
+
+        JButton applyBtn = new JButton("Apply");
+        applyBtn.setFont(new Font("Leelawadee UI", Font.BOLD, 14));
+        applyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        applyBtn.addActionListener(e -> {
+            String selected = (String) resolutionBox.getSelectedItem();
+            if (selected != null) {
+                String[] parts = selected.split("x");
+                int width = Integer.parseInt(parts[0]);
+                int height = Integer.parseInt(parts[1]);
+                
+                settings.applyResolution(width, height, false);
+                setSize(width, height);
+                setLocationRelativeTo(null);
+                revalidate();
+                repaint();
+                
+                JOptionPane.showMessageDialog(settingsDialog, 
+                    "เปลี่ยนความละเอียดเป็น " + selected + " แล้ว",
+                    "สำเร็จ", JOptionPane.INFORMATION_MESSAGE);
+            }
+            settingsDialog.dispose();
+        });
+
+        panel.add(applyBtn);
+        settingsDialog.add(panel, BorderLayout.CENTER);
+        settingsDialog.setVisible(true);
     }
 
     private int introIndex = 0; // 🌟 เพิ่มตัวแปรนี้ไว้นับหน้าฉาก
@@ -231,7 +357,7 @@ public class GameWindow extends JFrame {
     }
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new GameWindow().setVisible(true);
+            new UI(() -> new GameWindow().setVisible(true));
         });
     }
 }

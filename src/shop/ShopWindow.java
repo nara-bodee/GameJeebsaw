@@ -1,3 +1,6 @@
+package shop;
+
+import core.Player;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -28,12 +31,12 @@ public class ShopWindow extends JDialog {
     }
 
     private Item[] items = {
-            new Item("ดอกกุหลาบ", 100, "images/rose.png"),
-            new Item("สมุดคณิตศาสตร์", 100, "images/book.png"),
-            new Item("เลม่อนโซดาสุดซ่า", 50, "images/lemon_soda.png"),
-            new Item("ร่มคันใหญ่", 100, "images/umbrella.png"),
-            new Item("พวงกุญแจตุ๊กตา", 50, "images/baby.png"),
-            new Item("เพชรมายา", 1000000, "images/Daimon.png")
+            new Item("ดอกกุหลาบ", 100, "../images/rose.png"),
+            new Item("สมุดคณิตศาสตร์", 100, "../images/book.png"),
+            new Item("เลม่อนโซดาสุดซ่า", 50, "../images/lemon_soda.png"),
+            new Item("ร่มคันใหญ่", 100, "../images/umbrella.png"),
+            new Item("พวงกุญแจตุ๊กตา", 50, "../images/baby.png"),
+            new Item("เพชรมายา", 1000000, "../images/Daimon.png")
     };
 
     public ShopWindow(JFrame parent, Player player) {
@@ -107,7 +110,7 @@ public class ShopWindow extends JDialog {
 
         // รูปสินค้า
         try {
-            ImageIcon icon = new ImageIcon(getClass().getResource(item.imagePath));
+            ImageIcon icon = new ImageIcon(item.imagePath);
             Image img = icon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);
             JLabel imageLabel = new JLabel(new ImageIcon(img));
             imageLabel.setBounds((CARD_WIDTH - 90) / 2, 15, 90, 90);
