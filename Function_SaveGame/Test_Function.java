@@ -18,6 +18,8 @@ public class Test_Function {
             50                   // คะแนนสาว B
         );
         SaveManager.saveSlot(mySave, 1);
+        gameDate currentDate = new gameDate(5, 10, 2024);
+        System.out.println("วันที่ปัจจุบัน: " + currentDate);
 
         System.out.println("\n--- ทดสอบระบบโหลด ---");
 
@@ -28,6 +30,18 @@ public class Test_Function {
             System.out.println("เวลาที่เซฟ: " + loadedData.saveDate);
             System.out.println("ชื่อผู้เล่น: " + loadedData.playerName);
             System.out.println("คะแนนสาว A: " + loadedData.affectionGirlA);
+            for (int i = 1; i <= 5; i++) {
+            currentDate.advanceDay(); // สั่งให้ข้ามวัน
+            System.out.println("ผ่านไป " + i + " วัน -> เป็น " + currentDate.toString());
+
+            // ตัวอย่าง: เช็คเงื่อนไขเหตุการณ์ตามวันที่ (เช่น วันที่ 2 หรือ 30)
+            if (currentDate.day == 2) {
+                System.out.println("   [EVENT] วันเงินเดือนออก!");
+            }
+            if (currentDate.day == 30) {
+                System.out.println("   [EVENT] วันสิ้นเดือน!");
+            }
+        }
         }
     }
 }
