@@ -209,7 +209,7 @@ public class GameWindow extends JFrame {
         panel.add(Box.createVerticalStrut(30));
 
         JButton applyBtn = new JButton("Apply");
-        applyBtn.setFont(new Font("Leelawadee UI", Font.BOLD, 14));
+        applyBtn.setFont(new Font("TH Sarabun New", Font.BOLD, 14));
         applyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         applyBtn.addActionListener(e -> {
             String selected = (String) resolutionBox.getSelectedItem();
@@ -225,7 +225,7 @@ public class GameWindow extends JFrame {
                 repaint();
                 
                 JOptionPane.showMessageDialog(settingsDialog, 
-                    "เปลี่ยนความละเอียดเป็น " + selected + " แล้ว",
+                    selected ,
                     "สำเร็จ", JOptionPane.INFORMATION_MESSAGE);
             }
             settingsDialog.dispose();
