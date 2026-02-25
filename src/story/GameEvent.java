@@ -1,9 +1,11 @@
 package story;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GameEvent {
+public class GameEvent implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String eventId;
     private String eventName;
     private List<String> introTexts;

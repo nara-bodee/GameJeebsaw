@@ -3,6 +3,7 @@ package main;
 import core.GameSettings;
 import core.Player;
 import java.awt.*;
+import java.io.*;
 import java.util.List;
 import javax.swing.*;
 import shop.ShopWindow;
@@ -27,7 +28,10 @@ public class GameWindow extends JFrame {
     private JPanel choicePanel; 
     private JButton nextDayButton; 
     private GameEvent activeEvent = null;
-    private int eventStep = 0; 
+    private int eventStep = 0;
+    
+    // ตัวแปรสำหรับ save game
+    private static final String SAVE_FILE = "gamesave.dat"; 
 
     public GameWindow() {
         setTitle("เกมจีบสาว 7 Days");
@@ -132,13 +136,16 @@ public class GameWindow extends JFrame {
         add(mainScene);
         setSize(800, 600); // กำหนดขนาดเริ่มต้น
         setLocationRelativeTo(null);
+        
+        // ตรวจสอบว่ามีไฟล์บันทึกเกมหรือไม่
+        checkForSavedGame();
     }
 
     // แสดง Menu Dialog
     private void showMenuDialog() {
         JDialog menuDialog = new JDialog(this, "Menu", true);
-        menuDialog.setLayout(new GridLayout(3, 1, 10, 10));
-        menuDialog.setSize(300, 250);
+        menuDialog.setLayout(new GridLayout(5, 1, 10, 10));
+        menuDialog.setSize(300, 380);
         menuDialog.setLocationRelativeTo(this);
 
         Font menuFont = new Font("Leelawadee UI", Font.BOLD, 18);
@@ -150,6 +157,34 @@ public class GameWindow extends JFrame {
         continueBtn.setForeground(Color.WHITE);
         continueBtn.setFocusPainted(false);
         continueBtn.addActionListener(e -> menuDialog.dispose());
+
+        // ปุ่ม New Game
+        JButton newGameBtn = new JButton("New Game");
+        newGameBtn.setFont(menuFont);
+        newGameBtn.setBackground(new Color(255, 200, 100));
+        newGameBtn.setForeground(Color.WHITE);
+        newGameBtn.setFocusPainted(false);
+        newGameBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(menuDialog,
+                "ต้องการเริ่มเกมใหม่? (ข้อมูลเก่าจะถูกลบ)",
+                "New Game",
+                JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                startNewGame();
+                menuDialog.dispose();
+            }
+        });
+
+        // ปุ่ม Load Save (โหลด save ล่าสุด)
+        JButton loadSaveBtn = new JButton("Load Save");
+        loadSaveBtn.setFont(menuFont);
+        loadSaveBtn.setBackground(new Color(150, 180, 200));
+        loadSaveBtn.setForeground(Color.WHITE);
+        loadSaveBtn.setFocusPainted(false);
+        loadSaveBtn.addActionListener(e -> {
+            loadGame(true);
+            menuDialog.dispose();
+        });
 
         // ปุ่ม Settings
         JButton settingsBtn = new JButton("Settings");
@@ -171,6 +206,8 @@ public class GameWindow extends JFrame {
         exitBtn.addActionListener(e -> System.exit(0));
 
         menuDialog.add(continueBtn);
+        menuDialog.add(newGameBtn);
+        menuDialog.add(loadSaveBtn);
         menuDialog.add(settingsBtn);
         menuDialog.add(exitBtn);
 
@@ -290,7 +327,9 @@ public class GameWindow extends JFrame {
                 dialogText.setText("<html><b>จบเกมแล้ว!</b> คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
                 nextDayButton.setText("จบเกม");
                 nextDayButton.setEnabled(false);
+                autoSaveGame(); // บันทึกตอนจบเกม
             } else {
+                autoSaveGame(); // บันทึกหลังจากจบแต่ละวัน
                 advanceDay(); 
             }
         }
@@ -334,7 +373,8 @@ public class GameWindow extends JFrame {
                 
                 nextDayButton.setEnabled(true); 
                 nextDayButton.setText(currentDay == 7 ? "ดูผลลัพธ์ " : "ข้ามวัน ");
-                eventStep = 3; 
+                eventStep = 3;
+                autoSaveGame(); // บันทึกหลังจากเลือกตัวเลือก
             });
             btnContainer.add(choiceBtn);
             
@@ -359,5 +399,116 @@ public class GameWindow extends JFrame {
         SwingUtilities.invokeLater(() -> {
             new UI(() -> new GameWindow().setVisible(true));
         });
+    }
+
+    // =============== AUTO SAVE GAME ===============
+    private void autoSaveGame() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE))) {
+            oos.writeInt(currentDay);
+            oos.writeInt(eventStep);
+            oos.writeInt(introIndex);
+            oos.writeObject(player);
+            oos.writeObject(activeEvent);
+        } catch (IOException e) {
+            System.err.println("Auto-save failed: " + e.getMessage());
+        }
+    }
+
+    // =============== LOAD GAME ===============
+    private void loadGame(boolean showMessage) {
+        File saveFile = new File(SAVE_FILE);
+        if (!saveFile.exists()) {
+            if (showMessage) {
+                JOptionPane.showMessageDialog(this, 
+                    "ไม่พบไฟล์บันทึก!",
+                    "Load", JOptionPane.WARNING_MESSAGE);
+            }
+            return;
+        }
+        
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(SAVE_FILE))) {
+            currentDay = ois.readInt();
+            eventStep = ois.readInt();
+            introIndex = ois.readInt();
+            player = (Player) ois.readObject();
+            activeEvent = (GameEvent) ois.readObject();
+            
+            // อัปเดตหน้าจอหลังจากโหลด
+            if (activeEvent != null) {
+                if (eventStep == 1 && introIndex < activeEvent.getIntroTexts().size()) {
+                    dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                    changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
+                } else if (eventStep == 2) {
+                    dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
+                    changeBackground(activeEvent.getQuestionBgPath());
+                    showChoices(activeEvent.getChoices());
+                    nextDayButton.setEnabled(false);
+                }
+            } else {
+                dialogText.setText("เกมโหลดสำเร็จ วันที่ " + currentDay);
+            }
+            
+            nextDayButton.setText("ไปต่อ");
+            nextDayButton.setEnabled(true);
+            
+            if (showMessage) {
+                JOptionPane.showMessageDialog(this, 
+                    "โหลดเกมสำเร็จ!",
+                    "Load", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            if (showMessage) {
+                JOptionPane.showMessageDialog(this, 
+                    "เกิดข้อผิดพลาดในการโหลด: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    // =============== CHECK FOR SAVED GAME ===============
+    private void checkForSavedGame() {
+        File saveFile = new File(SAVE_FILE);
+        if (saveFile.exists()) {
+            int choice = JOptionPane.showConfirmDialog(this,
+                "พบเกมที่บันทึกไว้ ต้องการเล่นต่อหรือไม่?",
+                "เกมที่บันทึกไว้",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                loadGame(false);
+            }
+            // ถ้าเลือก NO จะเริ่มเกมใหม่ตามปกติ
+        }
+    }
+    
+    // =============== START NEW GAME ===============
+    private void startNewGame() {
+        // ลบไฟล์ save เก่า
+        File saveFile = new File(SAVE_FILE);
+        if (saveFile.exists()) {
+            saveFile.delete();
+        }
+        
+        // รีเซ็ตค่าทั้งหมด
+        currentDay = 0;
+        eventStep = 0;
+        introIndex = 0;
+        player = new Player();
+        activeEvent = null;
+        
+        // รีเซ็ต UI
+        backgroundImage = new ImageIcon("../images_Story/ปก.png").getImage();
+        dialogText.setText("ยินดีต้อนรับสู่เกม 7 Days! เป้าหมายคือพิชิตใจเลม่อนให้ได้ภายใน 7 วัน");
+        nextDayButton.setText("เริ่มเกม");
+        nextDayButton.setEnabled(true);
+        choicePanel.removeAll();
+        choicePanel.revalidate();
+        repaint();
+        
+        JOptionPane.showMessageDialog(this,
+            "เริ่มเกมใหม่แล้ว!",
+            "New Game",
+            JOptionPane.INFORMATION_MESSAGE);
     }
 }

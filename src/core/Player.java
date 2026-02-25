@@ -1,9 +1,11 @@
 package core;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Player {
+public class Player implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int affectionScore = 0;
     private int teaseCount = 0;
     private Set<String> inventory = new HashSet<>();
