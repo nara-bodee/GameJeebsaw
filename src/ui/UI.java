@@ -351,12 +351,12 @@ public class UI extends JFrame {
         nameLabel.setOpaque(true);
         nameLabel.setBackground(new Color(255,120,160));
         nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("Tahoma",Font.BOLD,18));
+        nameLabel.setFont(new Font("TH Sarabun New",Font.BOLD,18));
         nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JTextArea dialogueText = new JTextArea(text);
         dialogueText.setBounds(40,60,780,80);
-        dialogueText.setFont(new Font("Tahoma",Font.PLAIN,18));
+        dialogueText.setFont(new Font("TH Sarabun New",Font.PLAIN,18));
         dialogueText.setLineWrap(true);
         dialogueText.setWrapStyleWord(true);
         dialogueText.setOpaque(false);
@@ -414,7 +414,7 @@ public class UI extends JFrame {
         };
         label.setBounds(x,y,150,50);
         label.setForeground(Color.WHITE);
-        label.setFont(new Font("Tahoma",Font.BOLD,18));
+        label.setFont(new Font("TH Sarabun New",Font.BOLD,18));
         label.setOpaque(false);
         return label;
     }
@@ -443,7 +443,7 @@ class RoundedButton extends JButton {
         setContentAreaFilled(false);
         setOpaque(false);
         setForeground(Color.WHITE);
-        setFont(new Font("Tahoma", Font.BOLD, 18));
+        setFont(new Font("TH Sarabun New", Font.BOLD, 18));
         setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         addMouseListener(new MouseAdapter() {

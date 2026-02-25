@@ -22,8 +22,8 @@ public class GameWindow extends JFrame {
     private int currentDay = 0; 
 
     private Image backgroundImage;
-    private Font gameFont = new Font("Leelawadee UI", Font.PLAIN, 22);
-    private Font buttonFont = new Font("Leelawadee UI", Font.BOLD, 16);
+    private Font gameFont = new Font("TH Sarabun New", Font.PLAIN, 22);
+    private Font buttonFont = new Font("TH Sarabun New", Font.BOLD, 16);
 
     private JPanel choicePanel; 
     private JButton nextDayButton; 
@@ -34,6 +34,12 @@ public class GameWindow extends JFrame {
     private static final String SAVE_FILE = "gamesave.dat"; 
 
     public GameWindow() {
+        // ตั้งค่า font ให้ JOptionPane และ dialog ทั้งหมด
+        UIManager.put("OptionPane.messageFont", new Font("TH Sarabun New", Font.PLAIN, 18));
+        UIManager.put("OptionPane.buttonFont", new Font("TH Sarabun New", Font.BOLD, 16));
+        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 18));
+        UIManager.put("Button.font", new Font("TH Sarabun New", Font.BOLD, 16));
+        
         setTitle("เกมจีบสาว 7 Days");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -84,7 +90,7 @@ public class GameWindow extends JFrame {
 
         // เพิ่มปุ่ม menu มุมซ้ายบน
         JButton menuButton = new JButton("⋮");
-        menuButton.setFont(new Font("Arial", Font.BOLD, 32));
+        menuButton.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
         menuButton.setForeground(Color.WHITE);
         menuButton.setBackground(new Color(0, 0, 0, 150));
         menuButton.setFocusPainted(false);
@@ -148,7 +154,7 @@ public class GameWindow extends JFrame {
         menuDialog.setSize(300, 380);
         menuDialog.setLocationRelativeTo(this);
 
-        Font menuFont = new Font("Leelawadee UI", Font.BOLD, 18);
+        Font menuFont = new Font("TH Sarabun New", Font.BOLD, 18);
 
         // ปุ่ม Continue
         JButton continueBtn = new JButton("Continue");
@@ -226,14 +232,14 @@ public class GameWindow extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel titleLabel = new JLabel("เลือกความละเอียดหน้าจอ:");
-        titleLabel.setFont(new Font("Leelawadee UI", Font.BOLD, 16));
+        titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 16));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(titleLabel);
         panel.add(Box.createVerticalStrut(20));
 
         String[] resolutions = {"800x600", "1024x768", "1280x720", "1366x768", "1920x1080"};
         JComboBox<String> resolutionBox = new JComboBox<>(resolutions);
-        resolutionBox.setFont(new Font("Leelawadee UI", Font.PLAIN, 14));
+        resolutionBox.setFont(new Font("TH Sarabun New", Font.PLAIN, 14));
         resolutionBox.setMaximumSize(new Dimension(200, 30));
         resolutionBox.setAlignmentX(Component.CENTER_ALIGNMENT);
         

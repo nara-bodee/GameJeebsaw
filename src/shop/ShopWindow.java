@@ -223,7 +223,7 @@ public class ShopWindow extends JDialog {
         public CircleBadge(String text) {
             super(text, SwingConstants.CENTER);
             setForeground(Color.WHITE);
-            setFont(new Font("Arial", Font.BOLD, 14));
+            setFont(new Font("TH Sarabun New", Font.BOLD, 14));
         }
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g;
