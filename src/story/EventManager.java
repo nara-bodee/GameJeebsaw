@@ -135,7 +135,7 @@ public class EventManager {
             "เลิกเรียน: นนท์ : เดินซื้อของที่สยาม และบังเอิญเจอเลม่อนมากับเพื่อน", "../images_Story/image_StoryDay5/บังเอิญเจอเลม่อน.png",
             "(เธอทำท่าเหมือนจะเห็นคุณ แต่ก็หลบตาไป)", "../images_Story/image_StoryDay5/เหมือนจะเห็นคุณ.png");
         event.addChoice(new Choice("ซื้อขนมไปฝากเธอและเพื่อนๆ", 20, 0, "เลม่อน: 'ขอบใจนะนนท์ อุตส่าห์ซื้อมาเผื่อเพื่อนเราด้วย' [ ความชอบ +20 ]", "../images_Story/image_StoryDay5/ซื้อขนมไปฝากเธอและเพื่อน.png"));
-        event.addChoice(new Choice("ทำเป็นไม่เห็นแล้วเดินสวนไป", -10, 0, "(คุณเดินสวนกันไปเหมือนคนแปลกหน้า) [ ความชอบ -10 ]", "../images_Story/image_StoryDay5/สวนกันไปเหมือนคนแปลกหน้า.png"));
+        event.addChoice(new Choice("ทำเป็นไม่เห็นแล้วเดินสวนไป", -10, 1, "(คุณเดินสวนกันไปเหมือนคนแปลกหน้า) [ ความชอบ -10 ]", "../images_Story/image_StoryDay5/สวนกันไปเหมือนคนแปลกหน้า.png"));
         return event;
     }
 
@@ -152,7 +152,7 @@ public class EventManager {
         }
 
         event.addChoice(new Choice("สัญญาว่าผมจะไปรอก่อนเวลาเลย", 20, 0, "เลม่อน: 'พูดแล้วนะ! ใครมาช้าต้องโดนทำโทษ' [ ความชอบ +20 ]", "../images_Story/image_StoryDay6/ใครมาช้าต้องโดนทำโทษ.png"));
-        event.addChoice(new Choice("บอกว่าไม่ว่าง", -50, 0, "เลม่อน: 'อ๋อ... เข้าใจแล้ว' [ ความชอบ -50 ]", "../images_Story/image_StoryDay6/ไม่ว่าง.png"));
+        event.addChoice(new Choice("บอกว่าไม่ว่าง", -50, 1, "เลม่อน: 'อ๋อ... เข้าใจแล้ว' [ ความชอบ -50 ]", "../images_Story/image_StoryDay6/ไม่ว่าง.png"));
         return event;
     }
     private GameEvent day6BadEvent() {
@@ -160,7 +160,7 @@ public class EventManager {
             "ตอนเย็น: เลม่อนรีบเดินออกจากโรงเรียนโดยไม่ได้บอกลากันด้วยซ้ำ...", "../images_Story/image_StoryDay6/เลม่อนรีบเดินออกจากโรงเรียน.png",
             "(ดูเหมือนพรุ่งนี้วันเสาร์ คุณคงต้องอยู่บ้านคนเดียวแน่ๆ)", "../images_Story/image_StoryDay6/อยู่บ้านคนเดียว.png");
         event.addChoice(new Choice("ทักแชทไปชวนเธอเที่ยววันเสาร์", 15, 0, "เลม่อน: 'อืมมม เอาสิ พรุ่งนี้เจอกันที่พารากอนนะ' (เกือบไปแล้ว!) [ ความชอบ +15 ]", "../images_Story/image_StoryDay6/ทักแชทไปชวนเธอ.png"));
-        event.addChoice(new Choice("ปล่อยไป กลับบ้านนอนเล่นเกม", -20, 0, "(วันเสาร์คงไม่มีอะไรเกิดขึ้น...) [ ความชอบ -20 ]", "../images_Story/image_StoryDay6/ปล่อยไป.png"));
+        event.addChoice(new Choice("ปล่อยไป กลับบ้านนอนเล่นเกม", -20, 1, "(วันเสาร์คงไม่มีอะไรเกิดขึ้น...) [ ความชอบ -20 ]", "../images_Story/image_StoryDay6/ปล่อยไป.png"));
         return event;
     }
 
