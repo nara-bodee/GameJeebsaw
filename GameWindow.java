@@ -1,0 +1,237 @@
+import javax.swing.*;
+import java.awt.*;
+import java.util.List;
+
+public class GameWindow extends JFrame {
+
+    private JLabel dialogText;
+    private EventManager eventManager;
+    private Player player; 
+    
+    // ตั้งค่าเริ่มต้นเป็น 0 เพื่อที่กดเริ่มเกมครั้งแรกจะกลายเป็นวันที่ 1
+    private int currentDay = 0; 
+
+    private Image backgroundImage;
+    private Font gameFont = new Font("Leelawadee UI", Font.PLAIN, 22);
+    private Font buttonFont = new Font("Leelawadee UI", Font.BOLD, 16);
+
+    private JPanel choicePanel; 
+    private JButton nextDayButton; 
+    private GameEvent activeEvent = null;
+    private int eventStep = 0; 
+
+    public GameWindow() {
+        setTitle("เกมจีบสาว 7 Days");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        eventManager = new EventManager();
+        player = new Player(); 
+
+        // รูปหน้าปกเกม
+        backgroundImage = new ImageIcon("images_Story/ปก.png").getImage();
+
+        JPanel mainScene = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+
+                g2d.setColor(Color.BLACK);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+
+                if (backgroundImage != null) {
+                    int panelWidth = getWidth();
+                    int panelHeight = getHeight();
+                    int imgWidth = backgroundImage.getWidth(null);
+                    int imgHeight = backgroundImage.getHeight(null);
+
+                    if (imgWidth > 0 && imgHeight > 0) {
+                        double panelAspect = (double) panelWidth / panelHeight;
+                        double imgAspect = (double) imgWidth / imgHeight;
+
+                        int drawWidth, drawHeight;
+                        int x = 0, y = 0;
+
+                        if (imgAspect > panelAspect) {
+                            drawWidth = panelWidth;
+                            drawHeight = (int) (panelWidth / imgAspect);
+                            y = (panelHeight - drawHeight) / 2; 
+                        } else {
+                            drawHeight = panelHeight;
+                            drawWidth = (int) (panelHeight * imgAspect);
+                            x = (panelWidth - drawWidth) / 2; 
+                        }
+                        g2d.drawImage(backgroundImage, x, y, drawWidth, drawHeight, this);
+                    }
+                }
+            }
+        };
+        mainScene.setLayout(new BorderLayout());
+
+        choicePanel = new JPanel(new GridBagLayout()); 
+        choicePanel.setOpaque(false);
+        mainScene.add(choicePanel, BorderLayout.CENTER);
+
+        JPanel bottomPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setColor(new Color(0, 0, 0, 200)); 
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.setColor(Color.WHITE);
+                g2d.drawRect(5, 5, getWidth() - 10, getHeight() - 10);
+            }
+        };
+        bottomPanel.setLayout(new BorderLayout());
+        bottomPanel.setPreferredSize(new Dimension(getWidth(), 150));
+        bottomPanel.setOpaque(false);
+
+        // ข้อความต้อนรับเข้าเกม
+        dialogText = new JLabel("ยินดีต้อนรับสู่เกม 7 Days! เป้าหมายคือพิชิตใจเลม่อนให้ได้ภายใน 7 วัน");
+        dialogText.setForeground(Color.WHITE);
+        dialogText.setFont(gameFont); 
+        dialogText.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        bottomPanel.add(dialogText, BorderLayout.CENTER);
+
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        controlPanel.setOpaque(false);
+        nextDayButton = new JButton("เริ่มเกม");
+        nextDayButton.setFont(buttonFont); 
+        nextDayButton.addActionListener(e -> advanceDay());
+        controlPanel.add(nextDayButton);
+        bottomPanel.add(controlPanel, BorderLayout.EAST);
+
+        mainScene.add(bottomPanel, BorderLayout.SOUTH);
+
+        add(mainScene);
+        setSize(800, 600); // กำหนดขนาดเริ่มต้น
+        setLocationRelativeTo(null);
+    }
+
+    private int introIndex = 0; // 🌟 เพิ่มตัวแปรนี้ไว้นับหน้าฉาก
+
+    private void advanceDay() {
+        if (currentDay >= 7 && activeEvent == null) {
+            return; 
+        }
+
+        if (activeEvent == null) {
+            currentDay++;
+            activeEvent = eventManager.checkDailyEvent(currentDay, player);
+            
+            if (activeEvent != null) {
+                eventStep = 1;
+                introIndex = 0; // เริ่มที่ฉากที่ 1
+                dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
+                nextDayButton.setText("ไปต่อ"); 
+            }
+        } 
+        else if (eventStep == 1) {
+            introIndex++; // เปลี่ยนเป็นฉากต่อไป
+            
+            // เช็คว่ายังมีฉาก Intro ให้เปลี่ยนอีกไหม?
+            if (introIndex < activeEvent.getIntroTexts().size()) {
+                // ถ้ามี โชว์ข้อความและรูปหน้าต่อไปเลย
+                dialogText.setText("<html>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
+            } else {
+                // ถ้าหมด Intro แล้ว ก็เข้าสู่หน้าคำถามและโชว์ปุ่มตัวเลือก
+                if (activeEvent.getChoices().isEmpty()) {
+                    activeEvent = null;
+                    eventStep = 0;
+                    advanceDay(); 
+                } else {
+                    eventStep = 2;
+                    dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
+                    changeBackground(activeEvent.getQuestionBgPath());
+                    
+                    showChoices(activeEvent.getChoices()); 
+                    nextDayButton.setEnabled(false); 
+                }
+            }
+        } 
+        else if (eventStep == 3) {
+            activeEvent = null;
+            eventStep = 0;
+            choicePanel.removeAll(); 
+            choicePanel.revalidate();
+            choicePanel.repaint();
+            
+            if (currentDay == 7) {
+                dialogText.setText("<html><b>จบเกมแล้ว!</b> คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
+                nextDayButton.setText("จบเกม");
+                nextDayButton.setEnabled(false);
+            } else {
+                advanceDay(); 
+            }
+        }
+    }
+
+    private void changeBackground(String path) {
+        if (path != null && !path.isEmpty()) {
+            backgroundImage = new ImageIcon(path).getImage();
+            this.repaint();
+        }
+    }
+
+    private void showChoices(List<Choice> choices) {
+        choicePanel.removeAll();
+        JPanel btnContainer = new JPanel(new GridLayout(0, 1, 10, 10)); 
+        btnContainer.setOpaque(false);
+
+        for (Choice c : choices) {
+            JButton choiceBtn = new JButton(c.getText());
+            choiceBtn.setFont(buttonFont);
+            choiceBtn.setBackground(new Color(255, 240, 245));
+            
+            choiceBtn.addActionListener(e -> {
+                
+                // 🌟 1. เช็คว่าถ้าปุ่มนี้ตั้งค่าว่าต้องเปิดร้าน ให้เรียกหน้าร้านค้าขึ้นมาก่อน!
+                if (c.isOpenShop()) {
+                    openShopUI(); 
+                }
+
+                // 2. แจกคะแนนตามปกติ
+                player.addAffection(c.getAffectionChange());
+                for(int i=0; i<c.getTeaseChange(); i++) player.addTease();
+
+                // 3. แสดงข้อความโต้ตอบ
+                dialogText.setText("<html>" + c.getResponseText() + "</html>");
+                changeBackground(c.getOutcomeBgPath());
+
+                choicePanel.removeAll(); 
+                choicePanel.revalidate();
+                choicePanel.repaint();
+                
+                nextDayButton.setEnabled(true); 
+                nextDayButton.setText(currentDay == 7 ? "ดูผลลัพธ์ " : "ข้ามวัน ");
+                eventStep = 3; 
+            });
+            btnContainer.add(choiceBtn);
+            
+        }
+        choicePanel.add(btnContainer);
+        choicePanel.revalidate();
+        this.repaint();
+        
+    }
+    // ==========================================
+    // 🌟 ระบบเปิดหน้าร้านค้า
+    // ==========================================
+    private void openShopUI() {
+        // เรียกใช้ไฟล์ ShopWindow.java ที่เพื่อนจะสร้าง
+        // ใช้ this เพื่ออ้างอิงหน้าต่างหลัก และส่ง player ไปให้ร้านค้าจัดการกระเป๋า
+        ShopWindow shop = new ShopWindow(this, player);
+        
+        // คำสั่งนี้จะทำให้เกมหยุดรอ จนกว่าหน้าต่าง ShopWindow จะถูกปิดลง
+        shop.setVisible(true); 
+    }
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new GameWindow().setVisible(true);
+        });
+    }
+}
