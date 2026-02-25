@@ -29,7 +29,7 @@ public class GameWindow extends JFrame {
         player = new Player(); 
 
         // รูปหน้าปกเกม
-        backgroundImage = new ImageIcon("src/images/classroom.jpg").getImage();
+        backgroundImage = new ImageIcon("images_Story/ปก.png").getImage();
 
         JPanel mainScene = new JPanel() {
             @Override
@@ -97,7 +97,7 @@ public class GameWindow extends JFrame {
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         controlPanel.setOpaque(false);
-        nextDayButton = new JButton("เริ่มเกม ▶");
+        nextDayButton = new JButton("เริ่มเกม");
         nextDayButton.setFont(buttonFont); 
         nextDayButton.addActionListener(e -> advanceDay());
         controlPanel.add(nextDayButton);
@@ -126,7 +126,7 @@ public class GameWindow extends JFrame {
                 introIndex = 0; // เริ่มที่ฉากที่ 1
                 dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
                 changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
-                nextDayButton.setText("ไปต่อ ⏭"); 
+                nextDayButton.setText("ไปต่อ"); 
             }
         } 
         else if (eventStep == 1) {
@@ -207,7 +207,7 @@ public class GameWindow extends JFrame {
                 choicePanel.repaint();
                 
                 nextDayButton.setEnabled(true); 
-                nextDayButton.setText(currentDay == 7 ? "ดูผลลัพธ์ ⏭" : "ข้ามวัน ⏭");
+                nextDayButton.setText(currentDay == 7 ? "ดูผลลัพธ์ " : "ข้ามวัน ");
                 eventStep = 3; 
             });
             btnContainer.add(choiceBtn);
