@@ -46,8 +46,8 @@ public class ShopWindow extends JDialog {
         setSize(1366, 768);
         setLocationRelativeTo(parent);
         
-        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 20));
-        UIManager.put("Button.font", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 24));
+        UIManager.put("Button.font", new Font("TH Sarabun New", Font.PLAIN, 24));
 
         layeredPane = new JLayeredPane();
         layeredPane.setLayout(null);
@@ -70,7 +70,7 @@ public class ShopWindow extends JDialog {
         // เปลี่ยนหัวข้อเป็นคำต้อนรับแทนยอดเงิน
         JLabel welcomeLabel = new JLabel("ยินดีต้อนรับ! เลือกหยิบสินค้าได้เลย");
         welcomeLabel.setForeground(Color.WHITE);
-        welcomeLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 28));
+        welcomeLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
         welcomeLabel.setBounds(30, 20, 400, 40);
         popup.add(welcomeLabel);
 
@@ -123,7 +123,7 @@ public class ShopWindow extends JDialog {
 
         JLabel nameLabel = new JLabel(item.name, SwingConstants.CENTER);
         nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
+        nameLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 24));
         nameLabel.setBounds(10, 120, CARD_WIDTH - 20, 25);
         card.add(nameLabel);
 
@@ -223,7 +223,7 @@ public class ShopWindow extends JDialog {
         public CircleBadge(String text) {
             super(text, SwingConstants.CENTER);
             setForeground(Color.WHITE);
-            setFont(new Font("TH Sarabun New", Font.BOLD, 14));
+            setFont(new Font("TH Sarabun New", Font.BOLD, 18));
         }
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g;

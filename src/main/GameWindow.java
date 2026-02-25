@@ -3,6 +3,7 @@ package main;
 import core.GameSettings;
 import core.Player;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.util.List;
 import javax.swing.*;
@@ -22,8 +23,8 @@ public class GameWindow extends JFrame {
     private int currentDay = 0; 
 
     private Image backgroundImage;
-    private Font gameFont = new Font("TH Sarabun New", Font.PLAIN, 22);
-    private Font buttonFont = new Font("TH Sarabun New", Font.BOLD, 16);
+    private Font gameFont = new Font("TH Sarabun New", Font.PLAIN, 26);
+    private Font buttonFont = new Font("TH Sarabun New", Font.BOLD, 20);
 
     private JPanel choicePanel; 
     private JButton nextDayButton; 
@@ -35,10 +36,10 @@ public class GameWindow extends JFrame {
 
     public GameWindow() {
         // ตั้งค่า font ให้ JOptionPane และ dialog ทั้งหมด
-        UIManager.put("OptionPane.messageFont", new Font("TH Sarabun New", Font.PLAIN, 18));
-        UIManager.put("OptionPane.buttonFont", new Font("TH Sarabun New", Font.BOLD, 16));
-        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 18));
-        UIManager.put("Button.font", new Font("TH Sarabun New", Font.BOLD, 16));
+        UIManager.put("OptionPane.messageFont", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("OptionPane.buttonFont", new Font("TH Sarabun New", Font.BOLD, 20));
+        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 20));
+        UIManager.put("Button.font", new Font("TH Sarabun New", Font.BOLD, 20));
         
         setTitle("เกมจีบสาว 7 Days");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -90,7 +91,7 @@ public class GameWindow extends JFrame {
 
         // เพิ่มปุ่ม menu มุมซ้ายบน
         JButton menuButton = new JButton("⋮");
-        menuButton.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
+        menuButton.setFont(new Font("TH Sarabun New", Font.BOLD, 36));
         menuButton.setForeground(Color.WHITE);
         menuButton.setBackground(new Color(0, 0, 0, 150));
         menuButton.setFocusPainted(false);
@@ -154,7 +155,7 @@ public class GameWindow extends JFrame {
         menuDialog.setSize(300, 380);
         menuDialog.setLocationRelativeTo(this);
 
-        Font menuFont = new Font("TH Sarabun New", Font.BOLD, 18);
+        Font menuFont = new Font("TH Sarabun New", Font.BOLD, 22);
 
         // ปุ่ม Continue
         JButton continueBtn = new JButton("Continue");
@@ -164,21 +165,15 @@ public class GameWindow extends JFrame {
         continueBtn.setFocusPainted(false);
         continueBtn.addActionListener(e -> menuDialog.dispose());
 
-        // ปุ่ม New Game
-        JButton newGameBtn = new JButton("New Game");
+        // ปุ่ม New Save (บันทึกเกมปัจจุบัน)
+        JButton newGameBtn = new JButton("New Save");
         newGameBtn.setFont(menuFont);
         newGameBtn.setBackground(new Color(255, 200, 100));
         newGameBtn.setForeground(Color.WHITE);
         newGameBtn.setFocusPainted(false);
         newGameBtn.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(menuDialog,
-                "ต้องการเริ่มเกมใหม่? (ข้อมูลเก่าจะถูกลบ)",
-                "New Game",
-                JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                startNewGame();
-                menuDialog.dispose();
-            }
+            saveGame();
+            menuDialog.dispose();
         });
 
         // ปุ่ม Load Save (โหลด save ล่าสุด)
@@ -209,7 +204,11 @@ public class GameWindow extends JFrame {
         exitBtn.setBackground(new Color(255, 100, 100));
         exitBtn.setForeground(Color.WHITE);
         exitBtn.setFocusPainted(false);
-        exitBtn.addActionListener(e -> System.exit(0));
+        exitBtn.addActionListener(e -> {
+            menuDialog.dispose();
+            dispose();
+            SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+        });
 
         menuDialog.add(continueBtn);
         menuDialog.add(newGameBtn);
@@ -232,14 +231,14 @@ public class GameWindow extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel titleLabel = new JLabel("เลือกความละเอียดหน้าจอ:");
-        titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 16));
+        titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(titleLabel);
         panel.add(Box.createVerticalStrut(20));
 
         String[] resolutions = {"800x600", "1024x768", "1280x720", "1366x768", "1920x1080"};
         JComboBox<String> resolutionBox = new JComboBox<>(resolutions);
-        resolutionBox.setFont(new Font("TH Sarabun New", Font.PLAIN, 14));
+        resolutionBox.setFont(new Font("TH Sarabun New", Font.PLAIN, 18));
         resolutionBox.setMaximumSize(new Dimension(200, 30));
         resolutionBox.setAlignmentX(Component.CENTER_ALIGNMENT);
         
@@ -252,7 +251,7 @@ public class GameWindow extends JFrame {
         panel.add(Box.createVerticalStrut(30));
 
         JButton applyBtn = new JButton("Apply");
-        applyBtn.setFont(new Font("TH Sarabun New", Font.BOLD, 14));
+        applyBtn.setFont(new Font("TH Sarabun New", Font.BOLD, 18));
         applyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         applyBtn.addActionListener(e -> {
             String selected = (String) resolutionBox.getSelectedItem();
@@ -309,9 +308,18 @@ public class GameWindow extends JFrame {
             } else {
                 // ถ้าหมด Intro แล้ว ก็เข้าสู่หน้าคำถามและโชว์ปุ่มตัวเลือก
                 if (activeEvent.getChoices().isEmpty()) {
-                    activeEvent = null;
-                    eventStep = 0;
-                    advanceDay(); 
+                    // ถ้าเป็นวันที่ 7 (ending) ให้แสดงข้อความและใช้ปุ่มมุมขวาล่าง
+                    if (currentDay == 7) {
+                        eventStep = 3;
+                        dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
+                        changeBackground(activeEvent.getQuestionBgPath());
+                        nextDayButton.setText("ดูผลลัพธ์");
+                        nextDayButton.setEnabled(true);
+                    } else {
+                        activeEvent = null;
+                        eventStep = 0;
+                        advanceDay(); 
+                    }
                 } else {
                     eventStep = 2;
                     dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
@@ -330,12 +338,19 @@ public class GameWindow extends JFrame {
             choicePanel.repaint();
             
             if (currentDay == 7) {
-                dialogText.setText("<html><b>จบเกมแล้ว!</b> คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
-                nextDayButton.setText("จบเกม");
-                nextDayButton.setEnabled(false);
-                autoSaveGame(); // บันทึกตอนจบเกม
+                dialogText.setText("<html>คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
+                nextDayButton.setText("กลับหน้าหลัก");
+                nextDayButton.setEnabled(true);
+                
+                // เมื่อกดปุ่มจะกลับไปหน้าหลัก
+                for (ActionListener al : nextDayButton.getActionListeners()) {
+                    nextDayButton.removeActionListener(al);
+                }
+                nextDayButton.addActionListener(e -> {
+                    dispose();
+                    SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+                });
             } else {
-                autoSaveGame(); // บันทึกหลังจากจบแต่ละวัน
                 advanceDay(); 
             }
         }
@@ -380,7 +395,6 @@ public class GameWindow extends JFrame {
                 nextDayButton.setEnabled(true); 
                 nextDayButton.setText(currentDay == 7 ? "ดูผลลัพธ์ " : "ข้ามวัน ");
                 eventStep = 3;
-                autoSaveGame(); // บันทึกหลังจากเลือกตัวเลือก
             });
             btnContainer.add(choiceBtn);
             
@@ -405,6 +419,25 @@ public class GameWindow extends JFrame {
         SwingUtilities.invokeLater(() -> {
             new UI(() -> new GameWindow().setVisible(true));
         });
+    }
+
+    // =============== SAVE GAME ===============
+    private void saveGame() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE))) {
+            oos.writeInt(currentDay);
+            oos.writeInt(eventStep);
+            oos.writeInt(introIndex);
+            oos.writeObject(player);
+            oos.writeObject(activeEvent);
+            
+            JOptionPane.showMessageDialog(this, 
+                "บันทึกเกมสำเร็จ!",
+                "Save", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, 
+                "เกิดข้อผิดพลาดในการบันทึก: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // =============== AUTO SAVE GAME ===============

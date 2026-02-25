@@ -1,0 +1,43 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "GameWindow",
+            "request": "launch",
+            "mainClass": "main.GameWindow",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ],
+            "noDebug": true
+        },
+        {
+            "name": "Launch GameJeebsaw (Debug)",
+            "type": "java",
+            "request": "launch",
+            "mainClass": "main.GameWindow",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ]
+        },
+        {
+            "name": "Run GameJeebsaw (No Debug)",
+            "type": "java",
+            "request": "launch",
+            "mainClass": "main.GameWindow",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ],
+            "noDebug": true
+        }
+    ]
+}

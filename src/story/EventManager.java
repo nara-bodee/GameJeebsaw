@@ -172,7 +172,6 @@ public class EventManager {
             GameEvent event = new GameEvent("END_SECRET", "Secret Ending: คู่กัดตลอดไป", 
                 "วันเสาร์: เลม่อนเรียกคุณมาเจอ แต่เปิดฉากเถียงกันตั้งแต่ 5 นาทีแรก!", "../images_Story/image_StoryDay7/END_SECRET1.png",
                 "เลม่อน: 'นายนี่มันกวนประสาทจริงๆ! แต่... ถ้าไม่มีนายก็คงเหงาแย่เลย' (จบแบบคู่กัด)", "../images_Story/image_StoryDay7/END_SECRET2.png");
-            event.addChoice(new Choice("จบเกม", 0, 0, "ขอบคุณที่เล่นเกมนี้!", "../images_Story/image_StoryDay7/END_SECRET2.png"));
             return event;
         }
 
@@ -180,28 +179,24 @@ public class EventManager {
             GameEvent event = new GameEvent("END_TRUE", "True Ending: รักนี้ที่รอคอย", 
                 "วันเสาร์: เลม่อนในชุดเดรสสวยงามยืนรอคุณที่พารากอน เธอกุมมือคุณไว้แน่น", "../images_Story/image_StoryDay7/END_TRUE1.png",
                 "เลม่อน: 'นนท์... ฉันชอบนายนะ ชอบมาตลอดเลย เป็นแฟนกันเถอะนะ!' (คุณตอบตกลงและสวมกอดเธอ)", "../images_Story/image_StoryDay7/END_TRUE2.png");
-            event.addChoice(new Choice("จบเกม", 0, 0, "ยินดีด้วย! คุณพิชิตใจเลม่อนสำเร็จแบบสมบูรณ์แบบ!", "../images_Story/image_StoryDay7/END_TRUE2.png"));
             return event;
         } 
         else if (finalScore >= 60) {
             GameEvent event = new GameEvent("END_GOOD", "Good Ending: จุดเริ่มต้นของสองเรา", 
                 "วันเสาร์: เลม่อนมาตามนัด ทั้งสองคนเดินเที่ยวกันอย่างมีความสุข", "../images_Story/image_StoryDay7/END_GOOD1.png",
                 "เลม่อน: 'วันนี้สนุกมากเลยนนท์... หลังจากนี้ เรามาทำความรู้จักกันให้มากกว่านี้ดีไหม?'", "../images_Story/image_StoryDay7/END_GOOD2.png");
-            event.addChoice(new Choice("จบเกม", 0, 0, "คุณทั้งสองเริ่มต้นดูใจกัน เป็นสัญญาณที่ดีมาก!", "../images_Story/image_StoryDay7/END_GOOD2.png"));
             return event;
         }
         else if (finalScore >= 20) {
             GameEvent event = new GameEvent("END_NORMAL", "Normal Ending: แค่เพื่อนสนิท", 
                 "วันเสาร์: เลม่อนซื้อน้ำมาฝากคุณในฐานะเพื่อน", "../images_Story/image_StoryDay7/END_NORMAL1.png",
                 "เลม่อน: 'ขอบใจสำหรับ 7 วันที่ผ่านมานะนนท์ นายเป็นเพื่อนผู้ชายที่ดีที่สุดของฉันเลย!'", "../images_Story/image_StoryDay7/END_NORMAL2.png");
-            event.addChoice(new Choice("จบเกม", 0, 0, "คุณติดอยู่ในเฟรนด์โซนอย่างสมบูรณ์แบบ...", "../images_Story/image_StoryDay7/END_NORMAL2.png"));
             return event;
         }
         else {
             GameEvent event = new GameEvent("END_BAD", "Bad Ending: คนแปลกหน้า", 
                 "วันเสาร์: คุณไปรอที่พารากอนเก้อ เลม่อนส่งข้อความมาบอกว่าติดธุระ...", "../images_Story/image_StoryDay7/END_BAD1.png",
                 "(หลังจากวันนั้น เลม่อนก็ทำตัวห่างเหินและกลายเป็นแค่เพื่อนร่วมโรงเรียนที่เดินสวนกัน...)", "../images_Story/image_StoryDay7/END_BAD2.png");
-            event.addChoice(new Choice("จบเกม", 0, 0, "Game Over... ลองเล่นใหม่อีกครั้งนะ", "../images_Story/image_StoryDay7/END_BAD2.png"));
             return event;
         }
     }
