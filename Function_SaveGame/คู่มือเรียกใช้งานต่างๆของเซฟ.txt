@@ -1,0 +1,177 @@
+ระบบนี้จัดการเรื่องการสร้างไฟล์เซฟ โหลด ลบ และดึงข้อมูลมาโชว์หน้า UI ให้หมดแล้ว
+ไฟล์เซฟทั้งหมดจะถูกสร้างและเก็บไว้ในโฟลเดอร์ "saves/" อัตโนมัติ ปลอดภัยไฟล์ไม่พังแน่นอน
+
+กรุณาสร้างไฟล์ Java 4 ไฟล์ตามโค้ดด้านล่างนี้ไว้ในโปรเจกต์:
+
+------------------------------------------------------
+ไฟล์ที่ 1: GameSaveData.java (สำหรับเก็บข้อมูลเนื้อเรื่องแต่ละช่องเซฟ)
+------------------------------------------------------
+import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class GameSaveData implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    // ข้อมูลโชว์หน้า Load Game
+    public String saveDate;      
+    public String chapterName;   
+
+    // ข้อมูลสถานะเกม (ให้ฝ่ายทำเกมเพลย์มาเพิ่มตัวแปรตรงนี้ได้เลย)
+    public String playerName;
+    public int currentSceneId;
+    public int affectionGirlA;
+    public int affectionGirlB;
+
+    public GameSaveData(String chapterName, String playerName, int currentSceneId, int affA, int affB) {
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        this.saveDate = formatter.format(new Date()); 
+        
+        this.chapterName = chapterName;
+        this.playerName = playerName;
+        this.currentSceneId = currentSceneId;
+        this.affectionGirlA = affA;
+        this.affectionGirlB = affB;
+    }
+}
+
+------------------------------------------------------
+ไฟล์ที่ 2: GlobalSaveData.java (สำหรับเก็บข้อมูลส่วนกลาง เช่น แกลเลอรีฉากจบ)
+------------------------------------------------------
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
+
+public class GlobalSaveData implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    public Set<Integer> unlockedCGs;       
+    public Set<String> unlockedEndings;    
+
+    public GlobalSaveData() {
+        unlockedCGs = new HashSet<>();
+        unlockedEndings = new HashSet<>();
+    }
+}
+
+------------------------------------------------------
+ไฟล์ที่ 3: GameConfig.java (สำหรับเก็บการตั้งค่าเกม)
+------------------------------------------------------
+import java.io.Serializable;
+
+public class GameConfig implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    public int bgmVolume;       
+    public int sfxVolume;       
+    public int textSpeed;       
+    public boolean fullScreen;  
+
+    public GameConfig() {
+        // ค่าเริ่มต้นเวลาเปิดเกมครั้งแรก
+        this.bgmVolume = 80;
+        this.sfxVolume = 80;
+        this.textSpeed = 2;
+        this.fullScreen = false;
+    }
+}
+
+------------------------------------------------------
+ไฟล์ที่ 4: SaveManager.java (หัวใจหลัก! ฝ่าย UI ต้องเรียกใช้คลาสนี้)
+------------------------------------------------------
+import java.io.*;
+
+public class SaveManager {
+    private static final String SAVE_DIR = "saves/"; 
+    private static final String EXTENSION = ".sav";
+    private static final String GLOBAL_FILE = SAVE_DIR + "system_global.dat";
+    private static final String CONFIG_FILE = SAVE_DIR + "config.dat";
+
+    private static void checkDirectory() {
+        File dir = new File(SAVE_DIR);
+        if (!dir.exists()) dir.mkdirs();
+    }
+
+    // --- 1. ระบบเซฟ/โหลด เนื้อเรื่อง (Slot) ---
+    public static boolean saveSlot(GameSaveData data, int slotNumber) {
+        checkDirectory();
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_DIR + "slot_" + slotNumber + EXTENSION))) {
+            oos.writeObject(data); return true;
+        } catch (IOException e) { return false; }
+    }
+
+    public static GameSaveData loadSlot(int slotNumber) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(SAVE_DIR + "slot_" + slotNumber + EXTENSION))) {
+            return (GameSaveData) ois.readObject();
+        } catch (Exception e) { return null; } // ถ้าไม่มีไฟล์ หรือไฟล์เสีย จะคืนค่า null
+    }
+
+    public static boolean deleteSlot(int slotNumber) {
+        File file = new File(SAVE_DIR + "slot_" + slotNumber + EXTENSION);
+        return file.exists() ? file.delete() : false;
+    }
+
+    public static GameSaveData[] getAllSaveSlotsInfo(int maxSlots) {
+        GameSaveData[] allSaves = new GameSaveData[maxSlots];
+        for (int i = 1; i <= maxSlots; i++) {
+            allSaves[i - 1] = loadSlot(i); 
+        }
+        return allSaves;
+    }
+
+    // --- 2. ระบบเซฟ/โหลด ส่วนกลาง (Global / Gallery) ---
+    public static void saveGlobal(GlobalSaveData data) {
+        checkDirectory();
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(GLOBAL_FILE))) { oos.writeObject(data); } catch (IOException e) {}
+    }
+
+    public static GlobalSaveData loadGlobal() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(GLOBAL_FILE))) {
+            return (GlobalSaveData) ois.readObject();
+        } catch (Exception e) { return new GlobalSaveData(); }
+    }
+
+    // --- 3. ระบบเซฟ/โหลด การตั้งค่า (Config) ---
+    public static void saveConfig(GameConfig config) {
+        checkDirectory();
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(CONFIG_FILE))) { oos.writeObject(config); } catch (IOException e) {}
+    }
+
+    public static GameConfig loadConfig() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(CONFIG_FILE))) {
+            return (GameConfig) ois.readObject();
+        } catch (Exception e) { return new GameConfig(); }
+    }
+}
+
+
+======================================================
+ตัวอย่างวิธีเรียกใช้งาน สำหรับฝ่าย UI / ฝ่าย Game Logic
+======================================================
+
+1. ตอนเปิดเข้าหน้า Setting (ดึงค่าเสียง)
+   GameConfig config = SaveManager.loadConfig();
+   System.out.println("เสียง BGM ปัจจุบัน: " + config.bgmVolume);
+
+2. ตอนวาดหน้าต่าง "Load Game" (แสดงช่องเซฟ 1-10)
+   GameSaveData[] allSaves = SaveManager.getAllSaveSlotsInfo(10);
+   // วนลูปเช็กว่าช่องไหนว่าง
+   for (int i = 0; i < allSaves.length; i++) {
+       if (allSaves[i] == null) {
+           System.out.println("ช่องที่ " + (i+1) + " : ว่าง (Empty)");
+       } else {
+           System.out.println("ช่องที่ " + (i+1) + " : เล่นถึง " + allSaves[i].chapterName);
+       }
+   }
+
+3. ตอนผู้เล่นกดปุ่ม "Save ลงช่องที่ 1"
+   GameSaveData myData = new GameSaveData("บทที่ 1", "พระเอก", 10, 50, 20);
+   SaveManager.saveSlot(myData, 1);
+
+4. ตอนผู้เล่นเล่นได้ฉากจบและปลดล็อกรูปภาพแกลเลอรี
+   GlobalSaveData global = SaveManager.loadGlobal();
+   global.unlockedCGs.add(5); // ปลดล็อกรูป ID 5
+   SaveManager.saveGlobal(global);
+
+
+   55555555555555555
