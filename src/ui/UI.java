@@ -2,9 +2,9 @@
 package ui;
 
 import core.GameSettings;
-import java.util.List;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.List;
 import javax.swing.*;
 import main.GameWindow;
 import online.LanDiscovery;
@@ -13,6 +13,14 @@ import online.OnlineRoomInfo;
 import online.OnlineServer;
 
 public class UI extends JFrame {
+    private static final String[] FONT_CANDIDATES = {
+        "TH Sarabun New",
+        "Leelawadee UI",
+        "Tahoma",
+        "Noto Sans Thai",
+        "Segoe UI"
+    };
+
     private final int BASE_WIDTH = 1280;
     private final int BASE_HEIGHT = 720;
     JLayeredPane layeredPane = new JLayeredPane();
@@ -30,7 +38,30 @@ public class UI extends JFrame {
         this(null);
     }
 
+    public static Font uiFont(int style, int size) {
+        String[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        for (String preferred : FONT_CANDIDATES) {
+            for (String available : availableFonts) {
+                if (preferred.equalsIgnoreCase(available)) {
+                    return new Font(available, style, size);
+                }
+            }
+        }
+        return new Font(Font.SANS_SERIF, style, size);
+    }
+
+    private static void applyUiFonts() {
+        UIManager.put("OptionPane.messageFont", uiFont(Font.PLAIN, 20));
+        UIManager.put("OptionPane.buttonFont", uiFont(Font.BOLD, 20));
+        UIManager.put("Label.font", uiFont(Font.PLAIN, 20));
+        UIManager.put("Button.font", uiFont(Font.BOLD, 20));
+        UIManager.put("ComboBox.font", uiFont(Font.PLAIN, 19));
+        UIManager.put("List.font", uiFont(Font.PLAIN, 19));
+        UIManager.put("TextArea.font", uiFont(Font.PLAIN, 19));
+    }
+
     public UI(Runnable onStartGame) {
+        applyUiFonts();
         this.onStartGame = onStartGame;
         GameSettings settings = GameSettings.getInstance();
         int currentWidth = settings.getScreenWidth();
@@ -250,15 +281,19 @@ public class UI extends JFrame {
             lobby.setLayout(new BorderLayout(10, 10));
 
             JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort());
+            roomInfo.setFont(uiFont(Font.PLAIN, 20));
             roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
             JTextArea playersArea = new JTextArea("ผู้เล่นในห้อง:\n- " + playerName);
+            playersArea.setFont(uiFont(Font.PLAIN, 20));
             playersArea.setEditable(false);
             playersArea.setLineWrap(true);
             playersArea.setWrapStyleWord(true);
 
             JButton startBtn = new JButton("เริ่มเกม");
             JButton closeBtn = new JButton("ปิดห้อง");
+            startBtn.setFont(uiFont(Font.BOLD, 20));
+            closeBtn.setFont(uiFont(Font.BOLD, 20));
 
             JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             bottomPanel.add(startBtn);
@@ -326,14 +361,17 @@ public class UI extends JFrame {
         lobby.setLayout(new BorderLayout(10, 10));
 
         JLabel roomInfo = new JLabel("เชื่อมต่อ: " + selectedRoom.getHostAddress() + ":" + selectedRoom.getPort());
+        roomInfo.setFont(uiFont(Font.PLAIN, 20));
         roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
         JTextArea playersArea = new JTextArea("กำลังเชื่อมต่อ...");
+        playersArea.setFont(uiFont(Font.PLAIN, 20));
         playersArea.setEditable(false);
         playersArea.setLineWrap(true);
         playersArea.setWrapStyleWord(true);
 
         JButton leaveBtn = new JButton("ออกจากห้อง");
+        leaveBtn.setFont(uiFont(Font.BOLD, 20));
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottomPanel.add(leaveBtn);
 
@@ -610,12 +648,12 @@ public class UI extends JFrame {
         nameLabel.setOpaque(true);
         nameLabel.setBackground(new Color(255,120,160));
         nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("TH Sarabun New",Font.BOLD,22));
+        nameLabel.setFont(uiFont(Font.BOLD, 22));
         nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JTextArea dialogueText = new JTextArea(text);
         dialogueText.setBounds(40,60,780,80);
-        dialogueText.setFont(new Font("TH Sarabun New",Font.PLAIN,22));
+        dialogueText.setFont(uiFont(Font.PLAIN, 22));
         dialogueText.setLineWrap(true);
         dialogueText.setWrapStyleWord(true);
         dialogueText.setOpaque(false);
@@ -673,7 +711,7 @@ public class UI extends JFrame {
         };
         label.setBounds(x,y,150,50);
         label.setForeground(Color.WHITE);
-        label.setFont(new Font("TH Sarabun New",Font.BOLD,22));
+        label.setFont(uiFont(Font.BOLD, 22));
         label.setOpaque(false);
         return label;
     }
@@ -702,7 +740,7 @@ class RoundedButton extends JButton {
         setContentAreaFilled(false);
         setOpaque(false);
         setForeground(Color.WHITE);
-        setFont(new Font("TH Sarabun New", Font.BOLD, 22));
+        setFont(UI.uiFont(Font.BOLD, 22));
         setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         addMouseListener(new MouseAdapter() {
