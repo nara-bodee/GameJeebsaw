@@ -6,6 +6,7 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 import javax.swing.*;
 import save.GameSaveData;
 import save.SaveManager;
@@ -40,6 +41,9 @@ public class GameWindow extends JFrame {
     private JButton nextDayButton; 
     private GameEvent activeEvent = null;
     private int eventStep = 0;
+    private final IntConsumer onFinalScore;
+    private final String playerDisplayName;
+    private boolean finalScoreSent = false;
     
     // ตัวแปรสำหรับ save game
     private static final int MAX_SAVE_SLOTS = 5;
@@ -67,10 +71,17 @@ public class GameWindow extends JFrame {
     }
 
     public GameWindow() {
+        this("Player", null);
+    }
+
+    public GameWindow(String playerDisplayName, IntConsumer onFinalScore) {
+        this.playerDisplayName = (playerDisplayName == null || playerDisplayName.trim().isEmpty()) ? "Player" : playerDisplayName.trim();
+        this.onFinalScore = onFinalScore;
+
         // ตั้งค่า font ให้ JOptionPane และ dialog ทั้งหมด
         applyUiFonts();
         
-        setTitle("เกมจีบสาว 7 Days");
+        setTitle("เกมจีบสาว 7 Days - " + this.playerDisplayName);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
@@ -391,6 +402,7 @@ public class GameWindow extends JFrame {
             choicePanel.repaint();
             
             if (currentDay == 7) {
+                reportFinalScoreIfNeeded();
                 dialogText.setText("<html>คะแนนความสัมพันธ์ของคุณคือ: " + player.getAffectionScore() + "</html>");
                 nextDayButton.setText("กลับหน้าหลัก");
                 nextDayButton.setEnabled(true);
@@ -413,6 +425,16 @@ public class GameWindow extends JFrame {
         if (path != null && !path.isEmpty()) {
             backgroundImage = new ImageIcon(path).getImage();
             this.repaint();
+        }
+    }
+
+    private void reportFinalScoreIfNeeded() {
+        if (finalScoreSent) {
+            return;
+        }
+        finalScoreSent = true;
+        if (onFinalScore != null) {
+            onFinalScore.accept(player.getAffectionScore());
         }
     }
 
@@ -648,6 +670,7 @@ public class GameWindow extends JFrame {
         introIndex = 0;
         player = new Player();
         activeEvent = null;
+        finalScoreSent = false;
         
         // รีเซ็ต UI
         backgroundImage = new ImageIcon("../images_Story/ปก.png").getImage();

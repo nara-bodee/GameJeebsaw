@@ -7,7 +7,7 @@ echo   เกมจีบสาว 7 Days - Compiler & Runner
 echo ════════════════════════════════════════
 echo.
 echo กำลังคอมไพล์...
-javac -encoding UTF-8 -d ..\bin main\*.java ui\*.java shop\*.java core\*.java story\*.java save\*.java
+javac -encoding UTF-8 -d ..\bin main\*.java ui\*.java shop\*.java core\*.java story\*.java save\*.java online\*.java
 if errorlevel 1 (
     echo.
     echo ❌ เกิดข้อผิดพลาดในการคอมไพล์
