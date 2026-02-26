@@ -6,7 +6,8 @@
             "name": "MainApp",
             "request": "launch",
             "mainClass": "main.MainApp",
-            "projectName": "GameJeebsaw_5607910b"
+            "projectName": "GameJeebsaw_5607910b",
+            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
         },
         {
             "type": "java",
@@ -15,11 +16,10 @@
             "mainClass": "main.GameWindow",
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
-            "preLaunchTask": "Compile Game (Thai)",
             "classPaths": [
                 "${workspaceFolder}/bin"
             ],
-            "noDebug": true
+            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
         },
         {
             "name": "Launch GameJeebsaw (Debug)",
@@ -28,10 +28,10 @@
             "mainClass": "main.GameWindow",
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
-            "preLaunchTask": "Compile Game (Thai)",
             "classPaths": [
                 "${workspaceFolder}/bin"
-            ]
+            ],
+            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
         },
         {
             "name": "Run GameJeebsaw (No Debug)",
@@ -44,6 +44,7 @@
             "classPaths": [
                 "${workspaceFolder}/bin"
             ],
+            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe",
             "noDebug": true
         }
     ]

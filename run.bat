@@ -1,12 +1,13 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0src"
+if not exist "..\bin" mkdir "..\bin"
 echo ════════════════════════════════════════
 echo   เกมจีบสาว 7 Days - Compiler & Runner
 echo ════════════════════════════════════════
 echo.
 echo กำลังคอมไพล์...
-javac -encoding UTF-8 main\*.java ui\*.java shop\*.java core\*.java story\*.java
+javac -encoding UTF-8 -d ..\bin main\*.java ui\*.java shop\*.java core\*.java story\*.java save\*.java
 if errorlevel 1 (
     echo.
     echo ❌ เกิดข้อผิดพลาดในการคอมไพล์
@@ -16,5 +17,5 @@ if errorlevel 1 (
 echo ✓ คอมไพล์สำเร็จ
 echo.
 echo กำลังรันเกม...
-java main.GameWindow
+java -cp ..\bin main.GameWindow
 pause

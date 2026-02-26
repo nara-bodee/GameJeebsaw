@@ -9,11 +9,11 @@
                 "-NoProfile",
                 "-ExecutionPolicy",
                 "Bypass",
-                "-Command",
-                "javac -encoding UTF-8 -d ..\\bin main/*.java ui/*.java shop/*.java core/*.java story/*.java"
+                "-File",
+                "${workspaceFolder}\\scripts\\compile.ps1"
             ],
             "options": {
-                "cwd": "${workspaceFolder}\\src"
+                "cwd": "${workspaceFolder}"
             },
             "group": "build",
             "presentation": {
@@ -32,11 +32,11 @@
                 "-NoProfile",
                 "-ExecutionPolicy",
                 "Bypass",
-                "-Command",
-                "java -cp ..\\bin main.GameWindow"
+                "-File",
+                "${workspaceFolder}\\scripts\\run-game.ps1"
             ],
             "options": {
-                "cwd": "${workspaceFolder}\\src"
+                "cwd": "${workspaceFolder}"
             },
             "group": {
                 "kind": "run",

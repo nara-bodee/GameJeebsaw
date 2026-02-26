@@ -4,9 +4,11 @@ import core.GameSettings;
 import core.Player;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
+import save.GameSaveData;
+import save.SaveManager;
 import shop.ShopWindow;
 import story.Choice;
 import story.EventManager;
@@ -14,6 +16,14 @@ import story.GameEvent;
 import ui.UI;
 
 public class GameWindow extends JFrame {
+
+    private static final String[] FONT_CANDIDATES = {
+        "TH Sarabun New",
+        "Leelawadee UI",
+        "Tahoma",
+        "Noto Sans Thai",
+        "Segoe UI"
+    };
 
     private JLabel dialogText;
     private EventManager eventManager;
@@ -23,8 +33,8 @@ public class GameWindow extends JFrame {
     private int currentDay = 0; 
 
     private Image backgroundImage;
-    private Font gameFont = new Font("TH Sarabun New", Font.PLAIN, 26);
-    private Font buttonFont = new Font("TH Sarabun New", Font.BOLD, 20);
+    private Font gameFont = createGameFont(Font.PLAIN, 26);
+    private Font buttonFont = createGameFont(Font.BOLD, 20);
 
     private JPanel choicePanel; 
     private JButton nextDayButton; 
@@ -32,14 +42,33 @@ public class GameWindow extends JFrame {
     private int eventStep = 0;
     
     // ตัวแปรสำหรับ save game
-    private static final String SAVE_FILE = "gamesave.dat"; 
+    private static final int MAX_SAVE_SLOTS = 5;
+    private static final int AUTO_SAVE_SLOT = 1;
+
+    private static Font createGameFont(int style, int size) {
+        String[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        for (String preferred : FONT_CANDIDATES) {
+            for (String available : availableFonts) {
+                if (preferred.equalsIgnoreCase(available)) {
+                    return new Font(available, style, size);
+                }
+            }
+        }
+        return new Font(Font.SANS_SERIF, style, size);
+    }
+
+    private static void applyUiFonts() {
+        UIManager.put("OptionPane.messageFont", createGameFont(Font.PLAIN, 20));
+        UIManager.put("OptionPane.buttonFont", createGameFont(Font.BOLD, 20));
+        UIManager.put("Label.font", createGameFont(Font.PLAIN, 20));
+        UIManager.put("Button.font", createGameFont(Font.BOLD, 20));
+        UIManager.put("ComboBox.font", createGameFont(Font.PLAIN, 19));
+        UIManager.put("List.font", createGameFont(Font.PLAIN, 19));
+    }
 
     public GameWindow() {
         // ตั้งค่า font ให้ JOptionPane และ dialog ทั้งหมด
-        UIManager.put("OptionPane.messageFont", new Font("TH Sarabun New", Font.PLAIN, 20));
-        UIManager.put("OptionPane.buttonFont", new Font("TH Sarabun New", Font.BOLD, 20));
-        UIManager.put("Label.font", new Font("TH Sarabun New", Font.PLAIN, 20));
-        UIManager.put("Button.font", new Font("TH Sarabun New", Font.BOLD, 20));
+        applyUiFonts();
         
         setTitle("เกมจีบสาว 7 Days");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -90,13 +119,34 @@ public class GameWindow extends JFrame {
         mainScene.setLayout(new BorderLayout());
 
         // เพิ่มปุ่ม menu มุมซ้ายบน
-        JButton menuButton = new JButton("⋮");
-        menuButton.setFont(new Font("TH Sarabun New", Font.BOLD, 36));
-        menuButton.setForeground(Color.WHITE);
+        JButton menuButton = new JButton() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(Color.WHITE);
+
+                int centerX = getWidth() / 2;
+                int startY = (getHeight() / 2) - 10;
+                int dotSize = 6;
+                int spacing = 8;
+
+                for (int i = 0; i < 3; i++) {
+                    int y = startY + (i * spacing);
+                    g2d.fillOval(centerX - (dotSize / 2), y, dotSize, dotSize);
+                }
+                g2d.dispose();
+            }
+        };
+        menuButton.setText("");
         menuButton.setBackground(new Color(0, 0, 0, 150));
         menuButton.setFocusPainted(false);
         menuButton.setBorderPainted(false);
         menuButton.setPreferredSize(new Dimension(50, 50));
+        menuButton.setMinimumSize(new Dimension(50, 50));
+        menuButton.setMaximumSize(new Dimension(50, 50));
+        menuButton.setMargin(new Insets(0, 0, 0, 0));
         menuButton.addActionListener(e -> showMenuDialog());
         
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -143,9 +193,6 @@ public class GameWindow extends JFrame {
         add(mainScene);
         setSize(800, 600); // กำหนดขนาดเริ่มต้น
         setLocationRelativeTo(null);
-        
-        // ตรวจสอบว่ามีไฟล์บันทึกเกมหรือไม่
-        checkForSavedGame();
     }
 
     // แสดง Menu Dialog
@@ -155,7 +202,7 @@ public class GameWindow extends JFrame {
         menuDialog.setSize(300, 380);
         menuDialog.setLocationRelativeTo(this);
 
-        Font menuFont = new Font("TH Sarabun New", Font.BOLD, 22);
+        Font menuFont = createGameFont(Font.BOLD, 22);
 
         // ปุ่ม Continue
         JButton continueBtn = new JButton("Continue");
@@ -172,8 +219,11 @@ public class GameWindow extends JFrame {
         newGameBtn.setForeground(Color.WHITE);
         newGameBtn.setFocusPainted(false);
         newGameBtn.addActionListener(e -> {
-            saveGame();
-            menuDialog.dispose();
+            Integer slot = chooseSaveSlot(false);
+            if (slot != null) {
+                saveGame(slot);
+                menuDialog.dispose();
+            }
         });
 
         // ปุ่ม Load Save (โหลด save ล่าสุด)
@@ -183,8 +233,11 @@ public class GameWindow extends JFrame {
         loadSaveBtn.setForeground(Color.WHITE);
         loadSaveBtn.setFocusPainted(false);
         loadSaveBtn.addActionListener(e -> {
-            loadGame(true);
-            menuDialog.dispose();
+            Integer slot = chooseSaveSlot(true);
+            if (slot != null) {
+                loadGame(slot, true);
+                menuDialog.dispose();
+            }
         });
 
         // ปุ่ม Settings
@@ -231,14 +284,14 @@ public class GameWindow extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel titleLabel = new JLabel("เลือกความละเอียดหน้าจอ:");
-        titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 20));
+        titleLabel.setFont(createGameFont(Font.BOLD, 20));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(titleLabel);
         panel.add(Box.createVerticalStrut(20));
 
         String[] resolutions = {"800x600", "1024x768", "1280x720", "1366x768", "1920x1080"};
         JComboBox<String> resolutionBox = new JComboBox<>(resolutions);
-        resolutionBox.setFont(new Font("TH Sarabun New", Font.PLAIN, 18));
+        resolutionBox.setFont(createGameFont(Font.PLAIN, 18));
         resolutionBox.setMaximumSize(new Dimension(200, 30));
         resolutionBox.setAlignmentX(Component.CENTER_ALIGNMENT);
         
@@ -251,7 +304,7 @@ public class GameWindow extends JFrame {
         panel.add(Box.createVerticalStrut(30));
 
         JButton applyBtn = new JButton("Apply");
-        applyBtn.setFont(new Font("TH Sarabun New", Font.BOLD, 18));
+        applyBtn.setFont(createGameFont(Font.BOLD, 18));
         applyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         applyBtn.addActionListener(e -> {
             String selected = (String) resolutionBox.getSelectedItem();
@@ -422,92 +475,141 @@ public class GameWindow extends JFrame {
     }
 
     // =============== SAVE GAME ===============
-    private void saveGame() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE))) {
-            oos.writeInt(currentDay);
-            oos.writeInt(eventStep);
-            oos.writeInt(introIndex);
-            oos.writeObject(player);
-            oos.writeObject(activeEvent);
-            
+    private void saveGame(int slotNumber) {
+        String chapterName = activeEvent != null
+            ? activeEvent.getEventName()
+            : "Day " + Math.max(1, currentDay);
+
+        GameSaveData saveData = new GameSaveData(
+            chapterName,
+            currentDay,
+            eventStep,
+            introIndex,
+            player,
+            activeEvent
+        );
+
+        boolean success = SaveManager.saveSlot(saveData, slotNumber);
+        if (success) {
             JOptionPane.showMessageDialog(this, 
-                "บันทึกเกมสำเร็จ!",
+                "บันทึกเกมสำเร็จ (ช่อง " + slotNumber + ")",
                 "Save", JOptionPane.INFORMATION_MESSAGE);
-        } catch (IOException e) {
+        } else {
             JOptionPane.showMessageDialog(this, 
-                "เกิดข้อผิดพลาดในการบันทึก: " + e.getMessage(),
+                "เกิดข้อผิดพลาดในการบันทึกเกม",
                 "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     // =============== AUTO SAVE GAME ===============
     private void autoSaveGame() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE))) {
-            oos.writeInt(currentDay);
-            oos.writeInt(eventStep);
-            oos.writeInt(introIndex);
-            oos.writeObject(player);
-            oos.writeObject(activeEvent);
-        } catch (IOException e) {
-            System.err.println("Auto-save failed: " + e.getMessage());
-        }
+        String chapterName = activeEvent != null
+            ? activeEvent.getEventName()
+            : "Day " + Math.max(1, currentDay);
+        GameSaveData saveData = new GameSaveData(chapterName, currentDay, eventStep, introIndex, player, activeEvent);
+        SaveManager.saveSlot(saveData, AUTO_SAVE_SLOT);
     }
 
     // =============== LOAD GAME ===============
-    private void loadGame(boolean showMessage) {
-        File saveFile = new File(SAVE_FILE);
-        if (!saveFile.exists()) {
+    private void loadGame(int slotNumber, boolean showMessage) {
+        GameSaveData saveData = SaveManager.loadSlot(slotNumber);
+        if (saveData == null) {
             if (showMessage) {
                 JOptionPane.showMessageDialog(this, 
-                    "ไม่พบไฟล์บันทึก!",
+                    "ไม่พบไฟล์บันทึกในช่อง " + slotNumber + "!",
                     "Load", JOptionPane.WARNING_MESSAGE);
             }
             return;
         }
-        
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(SAVE_FILE))) {
-            currentDay = ois.readInt();
-            eventStep = ois.readInt();
-            introIndex = ois.readInt();
-            player = (Player) ois.readObject();
-            activeEvent = (GameEvent) ois.readObject();
-            
-            // อัปเดตหน้าจอหลังจากโหลด
-            if (activeEvent != null) {
-                if (eventStep == 1 && introIndex < activeEvent.getIntroTexts().size()) {
-                    dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
-                    changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
-                } else if (eventStep == 2) {
-                    dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
-                    changeBackground(activeEvent.getQuestionBgPath());
-                    showChoices(activeEvent.getChoices());
-                    nextDayButton.setEnabled(false);
-                }
-            } else {
-                dialogText.setText("เกมโหลดสำเร็จ วันที่ " + currentDay);
+
+        currentDay = saveData.getCurrentDay();
+        eventStep = saveData.getEventStep();
+        introIndex = saveData.getIntroIndex();
+        player = saveData.getPlayer();
+        activeEvent = saveData.getActiveEvent();
+
+        // อัปเดตหน้าจอหลังจากโหลด
+        if (activeEvent != null) {
+            if (eventStep == 1 && introIndex < activeEvent.getIntroTexts().size()) {
+                dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
+                changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
+            } else if (eventStep == 2) {
+                dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
+                changeBackground(activeEvent.getQuestionBgPath());
+                showChoices(activeEvent.getChoices());
+                nextDayButton.setEnabled(false);
             }
-            
-            nextDayButton.setText("ไปต่อ");
-            nextDayButton.setEnabled(true);
-            
-            if (showMessage) {
-                JOptionPane.showMessageDialog(this, 
-                    "โหลดเกมสำเร็จ!",
-                    "Load", JOptionPane.INFORMATION_MESSAGE);
-            }
-        } catch (IOException | ClassNotFoundException e) {
-            if (showMessage) {
-                JOptionPane.showMessageDialog(this, 
-                    "เกิดข้อผิดพลาดในการโหลด: " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            }
+        } else {
+            dialogText.setText("เกมโหลดสำเร็จ วันที่ " + currentDay);
         }
+
+        nextDayButton.setText("ไปต่อ");
+        nextDayButton.setEnabled(true);
+
+        if (showMessage) {
+            JOptionPane.showMessageDialog(this, 
+                "โหลดเกมสำเร็จ (ช่อง " + slotNumber + ")",
+                "Load", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private Integer chooseSaveSlot(boolean existingOnly) {
+        GameSaveData[] allSlots = SaveManager.getAllSaveSlotsInfo(MAX_SAVE_SLOTS);
+        List<String> labels = new ArrayList<>();
+        List<Integer> slotNumbers = new ArrayList<>();
+
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            GameSaveData data = allSlots[i - 1];
+            if (existingOnly && data == null) {
+                continue;
+            }
+
+            String label;
+            if (data == null) {
+                label = "ช่อง " + i + " - ว่าง";
+            } else {
+                label = "ช่อง " + i + " - " + data.getChapterName() + " (" + data.getSaveDate() + ")";
+            }
+
+            labels.add(label);
+            slotNumbers.add(i);
+        }
+
+        if (labels.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "ยังไม่มีไฟล์บันทึกในทุกช่อง",
+                "Load",
+                JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+
+        String title = existingOnly ? "เลือกช่องโหลดเกม" : "เลือกช่องบันทึกเกม";
+        String message = existingOnly ? "เลือกช่องเซฟที่ต้องการโหลด:" : "เลือกช่องเซฟที่ต้องการบันทึก:";
+
+        Object selected = JOptionPane.showInputDialog(
+            this,
+            message,
+            title,
+            JOptionPane.PLAIN_MESSAGE,
+            null,
+            labels.toArray(),
+            labels.get(0)
+        );
+
+        if (selected == null) {
+            return null;
+        }
+
+        int selectedIndex = labels.indexOf(selected.toString());
+        if (selectedIndex < 0) {
+            return null;
+        }
+        return slotNumbers.get(selectedIndex);
     }
     
     // =============== CHECK FOR SAVED GAME ===============
     private void checkForSavedGame() {
-        File saveFile = new File(SAVE_FILE);
-        if (saveFile.exists()) {
+        if (hasAnySaveSlots()) {
             int choice = JOptionPane.showConfirmDialog(this,
                 "พบเกมที่บันทึกไว้ ต้องการเล่นต่อหรือไม่?",
                 "เกมที่บันทึกไว้",
@@ -515,18 +617,29 @@ public class GameWindow extends JFrame {
                 JOptionPane.QUESTION_MESSAGE);
             
             if (choice == JOptionPane.YES_OPTION) {
-                loadGame(false);
+                Integer slot = chooseSaveSlot(true);
+                if (slot != null) {
+                    loadGame(slot, false);
+                }
             }
             // ถ้าเลือก NO จะเริ่มเกมใหม่ตามปกติ
         }
     }
+
+    private boolean hasAnySaveSlots() {
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            if (SaveManager.hasSlot(i)) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     // =============== START NEW GAME ===============
     private void startNewGame() {
-        // ลบไฟล์ save เก่า
-        File saveFile = new File(SAVE_FILE);
-        if (saveFile.exists()) {
-            saveFile.delete();
+        // ลบไฟล์ save เก่าทั้งหมด
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            SaveManager.deleteSlot(i);
         }
         
         // รีเซ็ตค่าทั้งหมด

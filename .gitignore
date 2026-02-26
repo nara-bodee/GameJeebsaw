@@ -1,0 +1,13 @@
+# Build outputs
+bin/
+**/*.class
+
+# Runtime save data
+saves/
+
+# IDE
+.vscode/*.log
+
+# OS
+Thumbs.db
+Desktop.ini
