@@ -347,24 +347,40 @@ checkScoreboard();
             broadcastReadyStatus();
         }
 
-        void handleDisconnect() {
-    synchronized (OnlineServer.this) {
-        if (slot != null) {
-            slot.connected = false;
-            slot.disconnectTime = System.currentTimeMillis();
-            slot.session = null;
+       void handleDisconnect() {
+            synchronized (OnlineServer.this) {
+                if (slot != null) {
+                    slot.connected = false;
+                    slot.disconnectTime = System.currentTimeMillis();
+                    slot.session = null;
 
-            broadcast("PLAYER_DISCONNECTED|" + slot.name);
+                    broadcast("PLAYER_DISCONNECTED|" + slot.name);
 
-            if (!turnOrder.isEmpty()) {
-                String currentToken = turnOrder.get(currentTurnIndex);
-                if (slot.token.equals(currentToken)) {
-                    nextTurn();
+                    if (!turnOrder.isEmpty()) {
+                        String currentToken = turnOrder.get(currentTurnIndex);
+                        if (slot.token.equals(currentToken)) {
+                            nextTurn();
+                        }
+                    }
+
+                    // 🔥 เพิ่มส่วนนี้: ถ้าเกมยังไม่เริ่ม และไม่ใช่โฮสต์ ให้ลบรายชื่อออกทันทีไม่ต้องรอ
+                    if (!gameStarted && !slot.isHost) {
+                        playersByToken.remove(slot.token);
+                        turnOrder.remove(slot.token);
+                        
+                        // ถ้ารอบปัจจุบันชี้ไปที่คนที่เพิ่งออกพอดี (และลบออกไปแล้ว) ให้รีเซ็ต index
+                        if (currentTurnIndex >= turnOrder.size()) {
+                            currentTurnIndex = 0;
+                        }
+                    }
+
+                    // 🔥 สั่งอัปเดตรายชื่อผู้เล่นและสถานะไปยังทุกคนในห้องทันที
+                    broadcastPlayerList();
+                    broadcastReadyStatus();
+                    checkAllReady(); // เช็คอีกรอบ เผื่อคนที่เหลืออยู่กด Ready ครบหมดแล้ว
                 }
             }
         }
-    }
-}
 
         void send(String msg) {
             if (writer != null) writer.println(msg);
