@@ -38,6 +38,10 @@ public class OnlineClient {
         this.requestedName = sanitize(requestedName);
     }
 
+    public int getPort() {
+        return port;
+    }
+
     public void setListener(ClientListener listener) {
         this.listener = listener;
     }
@@ -49,6 +53,28 @@ public class OnlineClient {
         running = true;
 
         writer.println("JOIN|" + requestedName);
+
+        Thread readerThread = new Thread(this::readLoop, "OnlineClient-Reader");
+        readerThread.setDaemon(true);
+        readerThread.start();
+    }
+
+    /**
+     * Establishes a new connection to the server to attempt a reconnect using a session token.
+     * Note: The server protocol must be updated to handle a "RECONNECT|<token>" command.
+     * @param token The session token for reconnection.
+     * @throws IOException if a connection error occurs.
+     */
+    public void reconnect(String token) throws IOException {
+        if (token == null || token.isEmpty()) {
+            throw new IllegalArgumentException("Token cannot be null or empty for reconnect.");
+        }
+        socket = new Socket(hostAddress, port);
+        reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
+        running = true;
+
+        writer.println("RECONNECT|" + token);
 
         Thread readerThread = new Thread(this::readLoop, "OnlineClient-Reader");
         readerThread.setDaemon(true);
