@@ -7,19 +7,22 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import javax.swing.SwingUtilities;
 
 public class OnlineClient {
 
     public interface ClientListener {
-        void onConnected(String assignedName, String roomName, int maxPlayers, int currentPlayers);
+        void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayers);
         void onPlayerListChanged(List<String> players);
         void onStartGame();
         void onScoreboard(String scoreboardText);
+        void onStateSync(String state);
         void onError(String error);
         void onDisconnected();
+        void onRole(String role);
+        void onReadyStatus(String status);
+        void onAllReady();
     }
 
     private final String hostAddress;
@@ -30,6 +33,8 @@ public class OnlineClient {
     private BufferedReader reader;
     private PrintWriter writer;
     private volatile boolean running;
+
+    private String playerToken;
     private ClientListener listener;
 
     public OnlineClient(String hostAddress, int port, String requestedName) {
@@ -48,11 +53,18 @@ public class OnlineClient {
         writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
         running = true;
 
-        writer.println("JOIN|" + requestedName);
+        // ใช้ HELLO ตาม protocol ใหม่
+        writer.println("HELLO|" + requestedName);
 
         Thread readerThread = new Thread(this::readLoop, "OnlineClient-Reader");
         readerThread.setDaemon(true);
         readerThread.start();
+    }
+
+    public void reconnect() {
+        if (writer != null && playerToken != null) {
+            writer.println("RECONNECT|" + playerToken);
+        }
     }
 
     public void sendScore(int score) {
@@ -63,40 +75,72 @@ public class OnlineClient {
 
     public void disconnect() {
         running = false;
-        if (writer != null) {
-            writer.println("QUIT");
-        }
         closeSocket();
     }
 
     private void readLoop() {
         try {
             String line;
+
             while (running && (line = reader.readLine()) != null) {
+
                 if (line.startsWith("WELCOME|")) {
-                    String[] parts = line.split("\\|", 5);
-                    if (parts.length >= 5) {
-                        String assignedName = parts[1];
-                        String roomName = parts[2];
-                        int maxPlayers = parseInt(parts[3], 3);
-                        int currentPlayers = parseInt(parts[4], 1);
-                        notifyConnected(assignedName, roomName, maxPlayers, currentPlayers);
+
+                    String[] parts = line.split("\\|");
+
+                    if (parts.length >= 6) {
+                        String playerId = parts[1];
+                        playerToken = parts[2];
+                        String roomName = parts[3];
+                        int maxPlayers = parseInt(parts[4], 3);
+                        int currentPlayers = parseInt(parts[5], 1);
+
+                        notifyConnected(playerId, roomName, maxPlayers, currentPlayers);
                     }
+
                 } else if (line.startsWith("PLAYER_LIST|")) {
-                    String payload = line.substring("PLAYER_LIST|".length());
-                    List<String> players = payload.isEmpty()
-                        ? new ArrayList<>()
-                        : new ArrayList<>(Arrays.asList(payload.split(",")));
+
+                    String payload = line.substring("PLAYER_LIST|".length()).trim();
+                    List<String> players = new ArrayList<>();
+
+                    if (!payload.isEmpty()) {
+                        String[] parts = payload.split(",");
+                        for (String p : parts) {
+                            players.add(p.trim());
+                        }
+                    }
+
                     notifyPlayerList(players);
+
                 } else if (line.equals("START")) {
+
                     notifyStart();
+
                 } else if (line.startsWith("SCOREBOARD|")) {
-                    String board = line.substring("SCOREBOARD|".length()).replace("\\n", "\n");
+
+                    String board = line.substring("SCOREBOARD|".length())
+                                       .replace("\\n", "\n");
                     notifyScoreboard(board);
+
+                } else if (line.startsWith("STATE_SYNC|")) {
+
+                    String state = line.substring("STATE_SYNC|".length());
+                    notifyStateSync(state);
+
                 } else if (line.startsWith("ERROR|")) {
+
                     notifyError(line.substring("ERROR|".length()));
+                }else if (line.startsWith("ROLE|")) {
+                    notifyRole(line.split("\\|")[1]);
                 }
+                else if (line.startsWith("READY_STATUS|")) {
+                    notifyReadyStatus(line.substring("READY_STATUS|".length()));
+                }
+                else if (line.equals("ALL_READY")) {
+                    notifyAllReady();
+}
             }
+
         } catch (IOException e) {
             if (running) {
                 notifyError("การเชื่อมต่อหลุด: " + e.getMessage());
@@ -108,15 +152,17 @@ public class OnlineClient {
         }
     }
 
-    private void notifyConnected(String assignedName, String roomName, int maxPlayers, int currentPlayers) {
+    private void notifyConnected(String playerId, String roomName, int maxPlayers, int currentPlayers) {
         if (listener != null) {
-            SwingUtilities.invokeLater(() -> listener.onConnected(assignedName, roomName, maxPlayers, currentPlayers));
+            SwingUtilities.invokeLater(() ->
+                listener.onConnected(playerId, roomName, maxPlayers, currentPlayers));
         }
     }
 
     private void notifyPlayerList(List<String> players) {
         if (listener != null) {
-            SwingUtilities.invokeLater(() -> listener.onPlayerListChanged(players));
+            SwingUtilities.invokeLater(() ->
+                listener.onPlayerListChanged(players));
         }
     }
 
@@ -128,13 +174,22 @@ public class OnlineClient {
 
     private void notifyScoreboard(String board) {
         if (listener != null) {
-            SwingUtilities.invokeLater(() -> listener.onScoreboard(board));
+            SwingUtilities.invokeLater(() ->
+                listener.onScoreboard(board));
+        }
+    }
+
+    private void notifyStateSync(String state) {
+        if (listener != null) {
+            SwingUtilities.invokeLater(() ->
+                listener.onStateSync(state));
         }
     }
 
     private void notifyError(String error) {
         if (listener != null) {
-            SwingUtilities.invokeLater(() -> listener.onError(error));
+            SwingUtilities.invokeLater(() ->
+                listener.onError(error));
         }
     }
 
@@ -143,13 +198,31 @@ public class OnlineClient {
             SwingUtilities.invokeLater(listener::onDisconnected);
         }
     }
+    private void notifyRole(String role) {
+    if (listener != null) {
+        SwingUtilities.invokeLater(() ->
+            listener.onRole(role));
+    }
+}
+
+private void notifyReadyStatus(String status) {
+    if (listener != null) {
+        SwingUtilities.invokeLater(() ->
+            listener.onReadyStatus(status));
+    }
+}
+
+private void notifyAllReady() {
+    if (listener != null) {
+        SwingUtilities.invokeLater(listener::onAllReady);
+    }
+}
 
     private void closeSocket() {
         if (socket != null) {
             try {
                 socket.close();
-            } catch (IOException ignored) {
-            }
+            } catch (IOException ignored) {}
         }
     }
 
@@ -157,7 +230,11 @@ public class OnlineClient {
         if (text == null || text.trim().isEmpty()) {
             return "Player";
         }
-        return text.trim().replace("|", "_").replace(",", "_").replace(";", "_").replace(":", "_");
+        return text.trim()
+                   .replace("|", "_")
+                   .replace(",", "_")
+                   .replace(";", "_")
+                   .replace(":", "_");
     }
 
     private static int parseInt(String value, int fallback) {
@@ -167,4 +244,15 @@ public class OnlineClient {
             return fallback;
         }
     }
+    public void sendReady() {
+    if (writer != null) writer.println("READY");
+}
+
+public void sendUnready() {
+    if (writer != null) writer.println("UNREADY");
+}
+
+public void requestStart() {
+    if (writer != null) writer.println("START_REQUEST");
+}
 }

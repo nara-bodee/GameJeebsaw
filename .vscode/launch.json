@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "UI",
+            "request": "launch",
+            "mainClass": "ui.UI",
+            "projectName": "GameJeebsaw_6040302f"
+        },
+        {
+            "type": "java",
             "name": "MainApp",
             "request": "launch",
             "mainClass": "main.MainApp",

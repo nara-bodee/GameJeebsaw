@@ -4,6 +4,7 @@ package ui;
 import core.GameSettings;
 import java.awt.*;
 import java.awt.event.*;
+import java.net.InetAddress;
 import java.util.List;
 import javax.swing.*;
 import main.GameWindow;
@@ -271,210 +272,241 @@ public class UI extends JFrame {
     }
 
     private void startHostLobby(String playerName) {
-        try {
-            OnlineServer server = new OnlineServer("Room-" + playerName, playerName, 3);
-            server.start();
+   try {
+        OnlineServer server = new OnlineServer("Room-1", playerName, 3);
+        server.start();
 
-            JDialog lobby = new JDialog(this, "Online Room (Host)", false);
-            lobby.setSize(440, 360);
-            lobby.setLocationRelativeTo(this);
-            lobby.setLayout(new BorderLayout(10, 10));
+        // 🔥 ให้ Host connect เข้าห้องตัวเอง
+        OnlineClient hostClient = new OnlineClient(InetAddress.getLocalHost().getHostAddress(),
+                 server.getPort(),
+                 playerName);
+        hostClient.connect();
 
-            JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort());
-            roomInfo.setFont(uiFont(Font.PLAIN, 20));
-            roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
-
-            JTextArea playersArea = new JTextArea("ผู้เล่นในห้อง:\n- " + playerName);
-            playersArea.setFont(uiFont(Font.PLAIN, 20));
-            playersArea.setEditable(false);
-            playersArea.setLineWrap(true);
-            playersArea.setWrapStyleWord(true);
-
-            JButton startBtn = new JButton("เริ่มเกม");
-            JButton closeBtn = new JButton("ปิดห้อง");
-            startBtn.setFont(uiFont(Font.BOLD, 20));
-            closeBtn.setFont(uiFont(Font.BOLD, 20));
-
-            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-            bottomPanel.add(startBtn);
-            bottomPanel.add(closeBtn);
-
-            lobby.add(roomInfo, BorderLayout.NORTH);
-            lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
-            lobby.add(bottomPanel, BorderLayout.SOUTH);
-
-            server.setListener(new OnlineServer.ServerListener() {
-                @Override
-                public void onPlayerListChanged(List<String> players) {
-                    playersArea.setText(buildPlayerText(players));
-                }
-
-                @Override
-                public void onScoreboardReady(String scoreboardText) {
-                    JOptionPane.showMessageDialog(UI.this, scoreboardText, "ผลคะแนนออนไลน์", JOptionPane.INFORMATION_MESSAGE);
-                    server.stop();
-                }
-
-                @Override
-                public void onError(String error) {
-                    JOptionPane.showMessageDialog(UI.this, error, "Online Error", JOptionPane.ERROR_MESSAGE);
-                }
-            });
-
-            startBtn.addActionListener(e -> {
-                server.startGame();
-                lobby.dispose();
-                dispose();
-                SwingUtilities.invokeLater(() -> new GameWindow(playerName, server::submitHostScore).setVisible(true));
-            });
-
-            closeBtn.addActionListener(e -> {
-                server.stop();
-                lobby.dispose();
-            });
-
-            lobby.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    server.stop();
-                }
-            });
-
-            lobby.setVisible(true);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "สร้างห้องไม่สำเร็จ: " + e.getMessage(), "Online", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void startJoinLobby(String playerName) {
-        List<OnlineRoomInfo> rooms = LanDiscovery.discoverRooms(1500);
-        OnlineRoomInfo selectedRoom = chooseRoom(rooms);
-        if (selectedRoom == null) {
-            return;
-        }
-
-        OnlineClient client = new OnlineClient(selectedRoom.getHostAddress(), selectedRoom.getPort(), playerName);
-
-        JDialog lobby = new JDialog(this, "Online Lobby (Join)", false);
-        lobby.setSize(440, 360);
+        JDialog lobby = new JDialog(this, "Online Room (Host)", false);
+        lobby.setSize(500, 420);
         lobby.setLocationRelativeTo(this);
         lobby.setLayout(new BorderLayout(10, 10));
 
-        JLabel roomInfo = new JLabel("เชื่อมต่อ: " + selectedRoom.getHostAddress() + ":" + selectedRoom.getPort());
+        JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort());
         roomInfo.setFont(uiFont(Font.PLAIN, 20));
         roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
-        JTextArea playersArea = new JTextArea("กำลังเชื่อมต่อ...");
+        JTextArea playersArea = new JTextArea();
         playersArea.setFont(uiFont(Font.PLAIN, 20));
         playersArea.setEditable(false);
-        playersArea.setLineWrap(true);
-        playersArea.setWrapStyleWord(true);
 
-        JButton leaveBtn = new JButton("ออกจากห้อง");
-        leaveBtn.setFont(uiFont(Font.BOLD, 20));
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottomPanel.add(leaveBtn);
+        JButton startBtn = new JButton("เริ่มเกม");
+        startBtn.setEnabled(false); // 🔥 ปิดไว้ก่อน
 
+        JButton closeBtn = new JButton("ปิดห้อง");
+
+        JPanel bottom = new JPanel();
+        bottom.add(startBtn);
+        bottom.add(closeBtn);
+        JButton readyBtn = new JButton("Ready");
+bottom.add(readyBtn);
+final boolean[] ready = {false};
+
+readyBtn.addActionListener(e -> {
+    if (!ready[0]) {
+        hostClient.sendReady();
+        readyBtn.setText("Unready");
+        ready[0] = true;
+    } else {
+        hostClient.sendUnready();
+        readyBtn.setText("Ready");
+        ready[0] = false;
+    }
+});
+        hostClient.setListener(new OnlineClient.ClientListener() {
+
+    @Override
+    public void onPlayerListChanged(List<String> players) {
+        playersArea.setText(buildPlayerText(players));
+    }
+
+    @Override
+    public void onReadyStatus(String status) {
+        boolean everyoneReady = true;
+
+        String[] parts = status.split(",");
+        for (String p : parts) {
+            String[] pair = p.split(":");
+            if (pair.length == 2) {
+                if (!Boolean.parseBoolean(pair[1])) {
+                    everyoneReady = false;
+                }
+            }
+        }
+
+        startBtn.setEnabled(everyoneReady);
+    }
+
+    @Override public void onStartGame() {
+        lobby.dispose();
+        dispose();
+        new GameWindow(playerName, hostClient::sendScore).setVisible(true);
+    }
+
+    @Override public void onConnected(String a,String b,int c,int d){}
+    @Override public void onScoreboard(String s){}
+    @Override public void onStateSync(String s){}
+    @Override public void onError(String e){}
+    @Override public void onDisconnected(){}
+    @Override public void onRole(String r){}
+    @Override public void onAllReady(){}
+});
         lobby.add(roomInfo, BorderLayout.NORTH);
         lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
-        lobby.add(bottomPanel, BorderLayout.SOUTH);
+        lobby.add(bottom, BorderLayout.SOUTH);
 
-        final String[] assignedName = {playerName};
-        final boolean[] started = {false};
-
-        client.setListener(new OnlineClient.ClientListener() {
-            @Override
-            public void onConnected(String actualName, String roomName, int maxPlayers, int currentPlayers) {
-                assignedName[0] = actualName;
-                roomInfo.setText("ห้อง: " + roomName + " | ผู้เล่น " + currentPlayers + "/" + maxPlayers);
-            }
+        server.setListener(new OnlineServer.ServerListener() {
 
             @Override
-            public void onPlayerListChanged(List<String> players) {
-                playersArea.setText(buildPlayerText(players));
-            }
+public void onPlayerListChanged(List<String> players) {
+    playersArea.setText(buildPlayerText(players));
+    
+}
 
             @Override
-            public void onStartGame() {
-                started[0] = true;
-                lobby.dispose();
-                dispose();
-                SwingUtilities.invokeLater(() -> new GameWindow(assignedName[0], client::sendScore).setVisible(true));
-            }
-
-            @Override
-            public void onScoreboard(String scoreboardText) {
-                JOptionPane.showMessageDialog(UI.this, scoreboardText, "ผลคะแนนออนไลน์", JOptionPane.INFORMATION_MESSAGE);
-                client.disconnect();
+            public void onScoreboardReady(String scoreboardText) {
+                JOptionPane.showMessageDialog(UI.this, scoreboardText);
+                server.stop();
             }
 
             @Override
             public void onError(String error) {
-                JOptionPane.showMessageDialog(UI.this, error, "Online Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(UI.this, error);
             }
-
-            @Override
-            public void onDisconnected() {
-                if (!started[0] && lobby.isDisplayable()) {
-                    lobby.dispose();
-                }
-            }
+            
         });
 
-        leaveBtn.addActionListener(e -> {
-            client.disconnect();
+        
+
+        startBtn.addActionListener(e -> {
+    server.startGame();  // แค่สั่งเริ่ม
+});
+
+        closeBtn.addActionListener(e -> {
+            server.stop();
             lobby.dispose();
         });
 
-        lobby.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                client.disconnect();
-            }
-        });
+        lobby.setVisible(true);
 
-        try {
-            client.connect();
-            lobby.setVisible(true);
-        } catch (Exception e) {
-            client.disconnect();
-            JOptionPane.showMessageDialog(this, "เข้าห้องไม่สำเร็จ: " + e.getMessage(), "Online", JOptionPane.ERROR_MESSAGE);
-        }
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "สร้างห้องไม่สำเร็จ: " + e.getMessage());
     }
+    
+}
+
+    private void startJoinLobby(String playerName) {
+        final int[] max = {0};
+
+    List<OnlineRoomInfo> rooms = LanDiscovery.discoverRooms(1500);
+    OnlineRoomInfo selectedRoom = chooseRoom(rooms);
+    if (selectedRoom == null) return;
+
+    OnlineClient client = new OnlineClient(
+            selectedRoom.getHostAddress(),
+            selectedRoom.getPort(),
+            playerName
+    );
+
+    JDialog lobby = new JDialog(this, "Online Lobby", false);
+    lobby.setSize(500, 420);
+    lobby.setLocationRelativeTo(this);
+    lobby.setLayout(new BorderLayout(10, 10));
+
+    JLabel roomInfo = new JLabel("กำลังเชื่อมต่อ...");
+    roomInfo.setFont(uiFont(Font.PLAIN, 20));
+
+    JTextArea playersArea = new JTextArea();
+    playersArea.setFont(uiFont(Font.PLAIN, 20));
+    playersArea.setEditable(false);
+
+    JButton readyBtn = new JButton("Ready");
+    JButton leaveBtn = new JButton("ออกจากห้อง");
+
+    JPanel bottom = new JPanel();
+    bottom.add(readyBtn);
+    bottom.add(leaveBtn);
+
+    lobby.add(roomInfo, BorderLayout.NORTH);
+    lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
+    lobby.add(bottom, BorderLayout.SOUTH);
+
+    final boolean[] ready = {false};
+    final String[] assignedName = {playerName};
+
+    client.setListener(new OnlineClient.ClientListener() {
+
+        @Override
+public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayers) {
+    max[0] = maxPlayers;
+    roomInfo.setText("ห้อง: " + roomName + " | " + currentPlayers + "/" + maxPlayers);
+}
+
+        @Override
+public void onPlayerListChanged(List<String> players) {
+    playersArea.setText(buildPlayerText(players));
+    roomInfo.setText("ห้อง: " + selectedRoom.getRoomName()
+        + " | " + players.size() + "/" + max[0]);
+}
+
+        @Override 
+public void onStartGame() {
+    lobby.dispose();
+    dispose();
+    new GameWindow(playerName, client::sendScore).setVisible(true);
+}
+
+        @Override public void onScoreboard(String s) {}
+        @Override public void onStateSync(String s) {}
+        @Override public void onError(String e) {}
+        @Override public void onDisconnected() {}
+        @Override public void onRole(String r) {}
+        @Override public void onReadyStatus(String s) {}
+        @Override public void onAllReady() {}
+    });
+
+    readyBtn.addActionListener(e -> {
+        if (!ready[0]) {
+            client.sendReady();
+            readyBtn.setText("Unready");
+            ready[0] = true;
+        } else {
+            client.sendUnready();
+            readyBtn.setText("Ready");
+            ready[0] = false;
+        }
+    });
+
+    leaveBtn.addActionListener(e -> {
+        client.disconnect();
+        lobby.dispose();
+    });
+
+    try {
+        client.connect();
+        lobby.setVisible(true);
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "เข้าห้องไม่สำเร็จ");
+    }
+}
 
     private OnlineRoomInfo chooseRoom(List<OnlineRoomInfo> rooms) {
-        if (rooms == null || rooms.isEmpty()) {
-            String manual = JOptionPane.showInputDialog(
-                this,
-                "ไม่พบห้องอัตโนมัติ\nใส่ IP:PORT เช่น 192.168.1.10:5000",
-                "Join Room",
-                JOptionPane.PLAIN_MESSAGE
-            );
-            if (manual == null || !manual.contains(":")) {
-                return null;
-            }
 
-            String[] parts = manual.trim().split(":", 2);
-            if (parts.length < 2) {
-                return null;
-            }
-            try {
-                int port = Integer.parseInt(parts[1]);
-                return new OnlineRoomInfo("Manual Room", parts[0], port, 0, 3, "Unknown");
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "พอร์ตไม่ถูกต้อง", "Join Room", JOptionPane.WARNING_MESSAGE);
-                return null;
-            }
-        }
-
+    // ถ้ามีห้องจาก LAN ให้เลือกตามปกติก่อน
+    if (rooms != null && !rooms.isEmpty()) {
         Object selected = JOptionPane.showInputDialog(
-            this,
-            "เลือกห้องที่ต้องการเข้า",
-            "Join Room",
-            JOptionPane.PLAIN_MESSAGE,
-            null,
-            rooms.toArray(),
-            rooms.get(0)
+                this,
+                "เลือกห้องที่ต้องการเข้า",
+                "Join Room",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                rooms.toArray(),
+                rooms.get(0)
         );
 
         if (selected instanceof OnlineRoomInfo) {
@@ -482,6 +514,48 @@ public class UI extends JFrame {
         }
         return null;
     }
+
+    // ====== Manual Input (แยก IP / Port) ======
+
+    JTextField ipField = new JTextField("");
+    JTextField portField = new JTextField();
+
+    JPanel panel = new JPanel(new GridLayout(2, 2, 10, 10));
+    panel.add(new JLabel("IP:"));
+    panel.add(ipField);
+    panel.add(new JLabel("Port:"));
+    panel.add(portField);
+
+    int result = JOptionPane.showConfirmDialog(
+            this,
+            panel,
+            "ใส่ IP และ Port",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+    );
+
+    if (result != JOptionPane.OK_OPTION) {
+        return null;
+    }
+
+    String ip = ipField.getText().trim();
+    String portText = portField.getText().trim();
+
+    if (ip.isEmpty() || portText.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "กรุณากรอก IP และ Port");
+        return null;
+    }
+
+    int port;
+    try {
+        port = Integer.parseInt(portText);
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(this, "Port ต้องเป็นตัวเลข");
+        return null;
+    }
+
+    return new OnlineRoomInfo("Manual Room", ip, port, 0, 3, "Unknown");
+}
 
     private String buildPlayerText(List<String> players) {
         StringBuilder text = new StringBuilder("ผู้เล่นในห้อง:\n");
