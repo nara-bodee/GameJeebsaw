@@ -1,6 +1,9 @@
 package online;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -11,7 +14,44 @@ import java.util.List;
 import javax.swing.SwingUtilities;
 
 public class OnlineClient {
+    private volatile boolean intentionalDisconnect = false;
+    private static final String RECONNECT_FILE = "reconnect.dat";
+    private void saveReconnectData(String ip, int port, String token, String name) {
+        try (PrintWriter out = new PrintWriter(new FileWriter(RECONNECT_FILE))) {
+            out.println(ip + "," + port + "," + token + "," + name);
+        } catch (IOException ignored) {}
+    }
 
+    public static String[] loadReconnectData() {
+        File f = new File(RECONNECT_FILE);
+        if (!f.exists()) return null;
+        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+            String line = br.readLine();
+            if (line != null) {
+                return line.split(","); // [ip, port, token, name]
+            }
+        } catch (IOException ignored) {}
+        return null;
+    }
+
+    public static void clearReconnectData() {
+        new File(RECONNECT_FILE).delete();
+    }
+
+    public void connectWithToken(String token) throws IOException {
+        socket = new Socket(hostAddress, port);
+        reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
+        running = true;
+
+        this.playerToken = token;
+        // ส่งคำสั่ง RECONNECT พร้อม Token เดิม
+        writer.println("RECONNECT|" + token);
+
+        Thread readerThread = new Thread(this::readLoop, "OnlineClient-Reader");
+        readerThread.setDaemon(true);
+        readerThread.start();
+    }
     public interface ClientListener {
         void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayers);
         void onPlayerListChanged(List<String> players);
@@ -74,6 +114,7 @@ public class OnlineClient {
     }
 
     public void disconnect() {
+        intentionalDisconnect = true; // 🔥 ตั้งค่าว่าจงใจออก
         running = false;
         closeSocket();
     }
@@ -94,7 +135,7 @@ public class OnlineClient {
                         String roomName = parts[3];
                         int maxPlayers = parseInt(parts[4], 3);
                         int currentPlayers = parseInt(parts[5], 1);
-
+                        saveReconnectData(hostAddress, port, playerToken, requestedName);
                         notifyConnected(playerId, roomName, maxPlayers, currentPlayers);
                     }
 
@@ -128,8 +169,8 @@ public class OnlineClient {
                     notifyStateSync(state);
 
                 } else if (line.startsWith("ERROR|")) {
-
                     notifyError(line.substring("ERROR|".length()));
+                    disconnect();
                 }else if (line.startsWith("ROLE|")) {
                     notifyRole(line.split("\\|")[1]);
                 }
@@ -146,10 +187,13 @@ public class OnlineClient {
                 notifyError("การเชื่อมต่อหลุด: " + e.getMessage());
             }
         } finally {
-            running = false;
-            closeSocket();
-            notifyDisconnected();
-        }
+                running = false;
+                closeSocket();
+                // 🔥 ถ้าไม่ได้จงใจกดออก ค่อยแจ้งเตือนว่าหลุด
+                if (!intentionalDisconnect) {
+                    notifyDisconnected();
+                }
+            }
     }
 
     private void notifyConnected(String playerId, String roomName, int maxPlayers, int currentPlayers) {

@@ -173,23 +173,25 @@ private synchronized void nextTurn() {
                     long now = System.currentTimeMillis();
                     Iterator<PlayerSlot> it = playersByToken.values().iterator();
 while (it.hasNext()) {
-    PlayerSlot p = it.next();
-    if (!p.connected &&
-        now - p.disconnectTime > GRACE_PERIOD_MS &&
-        !"HOST".equals(p.token)) {
+                    PlayerSlot p = it.next();
+                    if (!p.connected &&
+                        now - p.disconnectTime > GRACE_PERIOD_MS &&
+                        !"HOST".equals(p.token)) {
 
-        // 🔥 ลบออกจาก turnOrder ด้วย
-        turnOrder.remove(p.token);
+                        turnOrder.remove(p.token);
 
-        // ถ้า index เลยขอบให้ reset
-        if (currentTurnIndex >= turnOrder.size()) {
-            currentTurnIndex = 0;
-        }
+                        if (currentTurnIndex >= turnOrder.size()) {
+                            currentTurnIndex = 0;
+                        }
 
-        broadcast("PLAYER_REMOVED|" + p.name);
-        it.remove();
-    }
-}
+                        broadcast("PLAYER_REMOVED|" + p.name);
+                        it.remove();
+                        
+                        // 🔥 เพิ่ม 2 บรรทัดนี้: ถ้าเกมเริ่มแล้วมีคนหลุดถาวร ให้ลดยอดคนที่ต้องรอคะแนน และเช็คคะแนนอีกรอบ
+                        if (gameStarted) expectedPlayersAtStart--;
+                        checkScoreboard(); 
+                    }
+                }
                 }
                 try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
             }
@@ -329,13 +331,11 @@ checkScoreboard();
 
         void handleReconnect(String token) {
             synchronized (OnlineServer.this) {
-
                 PlayerSlot ps = playersByToken.get(token);
                 if (ps == null) {
-                    send("ERROR|Invalid token");
+                    send("ERROR|หมดเวลา Reconnect หรือ Token ไม่ถูกต้อง");
                     return;
                 }
-
                 ps.connected = true;
                 ps.session = this;
                 this.slot = ps;
@@ -345,7 +345,11 @@ checkScoreboard();
             }
             broadcastCurrentTurn();
             broadcastReadyStatus();
+            
+            // 🔥 เพิ่มบรรทัดนี้ เพื่อให้ทุกคนในห้องเห็นว่าชื่อคนนี้ไม่ได้ (DC) แล้ว
+            broadcastPlayerList(); 
         }
+        
 
        void handleDisconnect() {
             synchronized (OnlineServer.this) {
@@ -411,6 +415,16 @@ checkScoreboard();
                 SwingUtilities.invokeLater(() ->
                         listener.onScoreboardReady(board));
             }
+            
+            // 🔥 เพิ่มส่วนนี้: รีเซ็ตสถานะห้องกลับเป็นปกติ เพื่อให้เริ่มเล่นรอบใหม่ได้
+            gameStarted = false;
+            scoreboardSent = false;
+            for (PlayerSlot p : playersByToken.values()) {
+                p.scoreSubmitted = false;
+                p.ready = false; 
+            }
+            // แจ้ง Client ทุกคนให้อัปเดตสถานะปุ่ม Ready กลับเป็น false
+            broadcastReadyStatus();
         }
     }
 
