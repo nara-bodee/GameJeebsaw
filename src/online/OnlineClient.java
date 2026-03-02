@@ -30,6 +30,7 @@ public class OnlineClient {
     private BufferedReader reader;
     private PrintWriter writer;
     private volatile boolean running;
+    private String sessionToken;
     private ClientListener listener;
 
     public OnlineClient(String hostAddress, int port, String requestedName) {
@@ -40,6 +41,14 @@ public class OnlineClient {
 
     public int getPort() {
         return port;
+    }
+
+    public String getHostAddress() {
+        return hostAddress;
+    }
+
+    public String getSessionToken() {
+        return sessionToken;
     }
 
     public void setListener(ClientListener listener) {
@@ -99,14 +108,13 @@ public class OnlineClient {
         try {
             String line;
             while (running && (line = reader.readLine()) != null) {
-                if (line.startsWith("WELCOME|")) {
-                    String[] parts = line.split("\\|", 5);
-                    if (parts.length >= 5) {
+                if (line.startsWith("WELCOME_TOKEN|")) {
+                    String[] parts = line.split("\\|", 4);
+                    if (parts.length >= 4) {
                         String assignedName = parts[1];
                         String roomName = parts[2];
-                        int maxPlayers = parseInt(parts[3], 3);
-                        int currentPlayers = parseInt(parts[4], 1);
-                        notifyConnected(assignedName, roomName, maxPlayers, currentPlayers);
+                        this.sessionToken = parts[3];
+                        notifyConnected(assignedName, roomName, 0, 0); // Player counts will be updated by PLAYER_LIST
                     }
                 } else if (line.startsWith("PLAYER_LIST|")) {
                     String payload = line.substring("PLAYER_LIST|".length());

@@ -15,8 +15,11 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.SwingUtilities;
 
 public class OnlineServer {
@@ -27,10 +30,13 @@ public class OnlineServer {
         void onError(String error);
     }
 
+    private record PlayerState(String playerName, String sessionToken, int score) {}
+
     private final String roomName;
     private final String hostName;
     private final int maxPlayers;
 
+    private final Map<String, PlayerState> disconnectedPlayers = new ConcurrentHashMap<>(); // Key: token
     private final Set<String> players = new LinkedHashSet<>();
     private final List<ClientSession> sessions = new CopyOnWriteArrayList<>();
     private final Map<String, Integer> scores = new LinkedHashMap<>();
@@ -265,6 +271,7 @@ public class OnlineServer {
         private BufferedReader reader;
         private PrintWriter writer;
         private String playerName;
+        private String sessionToken = UUID.randomUUID().toString();
 
         ClientSession(Socket socket) {
             this.socket = socket;
@@ -281,20 +288,50 @@ public class OnlineServer {
                 reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
 
-                String firstLine = reader.readLine();
-                if (firstLine == null || !firstLine.startsWith("JOIN|")) {
-                    send("ERROR|Invalid join");
+                final String firstLine = reader.readLine();
+                if (firstLine == null) {
                     return;
                 }
 
-                String requestedName = firstLine.substring("JOIN|".length());
-                synchronized (OnlineServer.this) {
-                    playerName = uniqueName(sanitize(requestedName));
-                    players.add(playerName);
+                if (firstLine.startsWith("RECONNECT|")) {
+                    String token = firstLine.substring("RECONNECT|".length());
+                    PlayerState reconnectedState = disconnectedPlayers.remove(token);
+
+                    if (reconnectedState == null) {
+                        send("ERROR|INVALID_TOKEN");
+                        return;
+                    }
+
+                    synchronized (OnlineServer.this) {
+                        this.playerName = reconnectedState.playerName();
+                        this.sessionToken = reconnectedState.sessionToken();
+                        players.add(this.playerName);
+                        scores.put(this.playerName, reconnectedState.score());
+                    }
+
+                } else if (firstLine.startsWith("JOIN|")) {
+                    if (gameStarted) {
+                        send("ERROR|Game has already started");
+                        return;
+                    }
+                    String requestedName = firstLine.substring("JOIN|".length());
+                    synchronized (OnlineServer.this) {
+                        playerName = uniqueName(sanitize(requestedName));
+                        players.add(playerName);
+                    }
+                } else {
+                    send("ERROR|Invalid command");
+                    return;
                 }
 
-                send("WELCOME|" + playerName + "|" + roomName + "|" + maxPlayers + "|" + players.size());
+                // Send welcome and current state
+                send("WELCOME_TOKEN|" + playerName + "|" + roomName + "|" + sessionToken);
                 broadcastPlayerList();
+
+                // If game is in progress, send the start signal to the reconnected client
+                if (gameStarted) {
+                    send("START");
+                }
 
                 String line;
                 while (running && (line = reader.readLine()) != null) {
@@ -313,12 +350,19 @@ public class OnlineServer {
                 synchronized (OnlineServer.this) {
                     sessions.remove(this);
                     if (playerName != null) {
-                        players.remove(playerName);
-                        if (!scoreboardSent) {
-                            scores.remove(playerName);
-                        }
-                        if (!gameStarted) {
+                        if (gameStarted && !scoreboardSent) {
+                            // Player disconnected mid-game, save state for reconnect
+                            int currentScore = scores.getOrDefault(playerName, 0);
+                            disconnectedPlayers.put(sessionToken, new PlayerState(playerName, sessionToken, currentScore));
+                            players.remove(playerName); // Remove from active list
                             broadcastPlayerList();
+                        } else {
+                            // Game not started or already finished, just remove them
+                            players.remove(playerName);
+                            scores.remove(playerName);
+                            if (!gameStarted) {
+                                broadcastPlayerList();
+                            }
                         }
                     }
                 }
