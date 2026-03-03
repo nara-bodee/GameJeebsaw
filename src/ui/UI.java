@@ -465,12 +465,12 @@ public class UI extends JFrame {
             lobby.setSize(500, 420);
             lobby.setLocationRelativeTo(this);
             lobby.setLayout(new BorderLayout(10, 10));
-
-            JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort());
+//---
+            // 🔥 1. แก้ไขค่าเริ่มต้นของ Host ให้โชว์ 1/3 ทันทีที่สร้างห้อง
+            JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort() + " | 1/3");
             roomInfo.setFont(uiFont(Font.PLAIN, 20));
             roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
-            // 🔥 เปลี่ยนจาก JTextArea เป็น JTextPane
             JTextPane playersArea = new JTextPane();
             playersArea.setContentType("text/html");
             playersArea.setEditable(false);
@@ -492,9 +492,11 @@ public class UI extends JFrame {
             final boolean[] ready = {false};
             final GameWindow[] activeGame = {null}; 
 
-            // 🔥 ตัวแปรเก็บรายชื่อและสถานะ Ready
             List<String> currentPlayers = new ArrayList<>();
             Map<String, Boolean> readyMap = new HashMap<>();
+            
+            // 🔥 2. เพิ่มตัวแปรเก็บจำนวนคนสูงสุดของฝั่ง Host
+            final int[] maxHost = {3};
 
             readyBtn.addActionListener(e -> {
                 if (!ready[0]) {
@@ -509,11 +511,21 @@ public class UI extends JFrame {
             });
 
             hostClient.setListener(new OnlineClient.ClientListener() {
+                
+                // 🔥 3. อัปเดตข้อมูลเมื่อ Host เชื่อมต่อเข้าห้องตัวเอง
+                @Override
+                public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayersList) {
+                    maxHost[0] = maxPlayers;
+                    roomInfo.setText("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort() + " | " + currentPlayersList + "/" + maxPlayers);
+                }
+
+                // 🔥 4. อัปเดตข้อความเวลามีคนเข้าออกให้มี พอร์ต และ จำนวนคน
                 @Override
                 public void onPlayerListChanged(List<String> players) {
                     currentPlayers.clear();
                     currentPlayers.addAll(players);
                     updatePlayerDisplay(playersArea, currentPlayers, readyMap);
+                    roomInfo.setText("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort() + " | " + players.size() + "/" + maxHost[0]);
                 }
 
                 @Override
@@ -568,7 +580,7 @@ public class UI extends JFrame {
                     hostClient.sendUnready();
                 }
 
-                @Override public void onConnected(String a,String b,int c,int d){}
+                // ลบ onConnected แบบว่างๆ ทิ้งไปแล้ว
                 @Override public void onStateSync(String s){}
                 @Override public void onError(String e){}
                 @Override public void onDisconnected(){}
@@ -662,21 +674,24 @@ public class UI extends JFrame {
         // 🔥 ตัวแปรเก็บรายชื่อและสถานะ Ready
         List<String> currentPlayers = new ArrayList<>();
         Map<String, Boolean> readyMap = new HashMap<>();
-
+        final int[] maxHost = {3};
+        
         client.setListener(new OnlineClient.ClientListener() {
             @Override
-            public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayersList) {
-                max[0] = maxPlayers;
-                roomInfo.setText("ห้อง: " + roomName + " | " + currentPlayersList + "/" + maxPlayers);
-            }
+    public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayersList) {
+        max[0] = maxPlayers;
+        // 🔥 แก้ไขบรรทัดนี้ให้แสดงพอร์ตด้วย
+        roomInfo.setText("ห้อง: " + roomName + " | พอร์ต: " + selectedRoom.getPort() + " | " + currentPlayersList + "/" + maxPlayers);
+    }
 
             @Override
-            public void onPlayerListChanged(List<String> players) {
-                currentPlayers.clear();
-                currentPlayers.addAll(players);
-                updatePlayerDisplay(playersArea, currentPlayers, readyMap);
-                roomInfo.setText("ห้อง: " + selectedRoom.getRoomName() + " | " + players.size() + "/" + max[0]);
-            }
+    public void onPlayerListChanged(List<String> players) {
+        currentPlayers.clear();
+        currentPlayers.addAll(players);
+        updatePlayerDisplay(playersArea, currentPlayers, readyMap);
+        // 🔥 แก้ไขบรรทัดนี้ให้แสดงพอร์ตด้วย
+        roomInfo.setText("ห้อง: " + selectedRoom.getRoomName() + " | พอร์ต: " + selectedRoom.getPort() + " | " + players.size() + "/" + max[0]);
+    }
             
             @Override
             public void onReadyStatus(String status) {
