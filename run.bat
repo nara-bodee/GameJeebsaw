@@ -17,5 +17,5 @@ if errorlevel 1 (
 echo ✓ คอมไพล์สำเร็จ
 echo.
 echo กำลังรันเกม...
-java -cp ..\bin main.GameWindow
+java -cp ..\bin main.MainFrame
 pause
