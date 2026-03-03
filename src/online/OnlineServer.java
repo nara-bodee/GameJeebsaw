@@ -75,7 +75,10 @@ private int currentTurnIndex = 0;
 
     gameStarted = true;
     expectedPlayersAtStart = playersByToken.size();
-
+        for (PlayerSlot p : playersByToken.values()) {
+            p.score = 0;
+            p.scoreSubmitted = false;
+        }
     currentTurnIndex = 0;
     broadcast("START");
     broadcastCurrentTurn();
@@ -436,6 +439,7 @@ checkScoreboard();
             for (PlayerSlot p : playersByToken.values()) {
                 p.scoreSubmitted = false;
                 p.ready = false; 
+                p.score = 0;
             }
             broadcastReadyStatus();
         }
