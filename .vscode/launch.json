@@ -3,11 +3,21 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MainFrame (New)",
+            "request": "launch",
+            "mainClass": "main.MainFrame",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ]
+        },
+        {
+            "type": "java",
             "name": "MainApp",
             "request": "launch",
             "mainClass": "main.MainApp",
-            "projectName": "GameJeebsaw_5607910b",
-            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
+            "projectName": "GameJeebsaw_5607910b"
         },
         {
             "type": "java",
@@ -18,8 +28,7 @@
             "console": "integratedTerminal",
             "classPaths": [
                 "${workspaceFolder}/bin"
-            ],
-            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
+            ]
         },
         {
             "name": "Launch GameJeebsaw (Debug)",
@@ -30,8 +39,7 @@
             "console": "integratedTerminal",
             "classPaths": [
                 "${workspaceFolder}/bin"
-            ],
-            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe"
+            ]
         },
         {
             "name": "Run GameJeebsaw (No Debug)",
@@ -44,7 +52,6 @@
             "classPaths": [
                 "${workspaceFolder}/bin"
             ],
-            "javaExec": "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot/bin/java.exe",
             "noDebug": true
         }
     ]
