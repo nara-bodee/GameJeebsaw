@@ -382,7 +382,11 @@ checkScoreboard();
                     broadcastPlayerList();
                     broadcastReadyStatus();
                     checkAllReady(); // เช็คอีกรอบ เผื่อคนที่เหลืออยู่กด Ready ครบหมดแล้ว
+                    if (gameStarted) {
+                        checkScoreboard();
+                    }
                 }
+                
             }
         }
 
@@ -399,14 +403,24 @@ checkScoreboard();
     // Scoreboard
     // =========================
 
+    // ในไฟล์ OnlineServer.java
     private void checkScoreboard() {
         if (!gameStarted || scoreboardSent) return;
 
-        long submitted = playersByToken.values().stream()
-        .filter(p -> p.scoreSubmitted)
-        .count();
+        // 1. นับจำนวนคนที่ "ยังอยู่ในห้องจริงๆ" ตอนนี้
+        long activePlayers = playersByToken.values().stream()
+            .filter(p -> p.connected)
+            .count();
 
-        if (submitted >= expectedPlayersAtStart) {
+        // 2. นับจำนวนคนที่ "ส่งคะแนนมาแล้ว"
+        long submitted = playersByToken.values().stream()
+            .filter(p -> p.scoreSubmitted)
+            .count();
+
+        // 🔥 3. เงื่อนไขสรุปผล: 
+        // ถ้าคนที่ส่งคะแนนมา มีจำนวนเท่ากับหรือมากกว่า คนที่ยังอยู่ในห้อง
+        // แปลว่าคนที่หลุด ไม่ต้องรอแล้ว สรุปผลได้เลย!
+        if (submitted >= expectedPlayersAtStart || (activePlayers > 0 && submitted >= activePlayers)) {
             scoreboardSent = true;
             String board = buildScoreboard();
             broadcast("SCOREBOARD|" + board.replace("\n", "\\n"));
@@ -416,14 +430,13 @@ checkScoreboard();
                         listener.onScoreboardReady(board));
             }
             
-            // 🔥 เพิ่มส่วนนี้: รีเซ็ตสถานะห้องกลับเป็นปกติ เพื่อให้เริ่มเล่นรอบใหม่ได้
+            // รีเซ็ตสถานะห้องกลับเป็นปกติ เพื่อให้เริ่มเล่นรอบใหม่ได้
             gameStarted = false;
             scoreboardSent = false;
             for (PlayerSlot p : playersByToken.values()) {
                 p.scoreSubmitted = false;
                 p.ready = false; 
             }
-            // แจ้ง Client ทุกคนให้อัปเดตสถานะปุ่ม Ready กลับเป็น false
             broadcastReadyStatus();
         }
     }

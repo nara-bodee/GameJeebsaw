@@ -1,4 +1,3 @@
-
 package ui;
 
 import core.GameSettings;
@@ -6,7 +5,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.*;
 import main.GameWindow;
 import online.LanDiscovery;
@@ -31,7 +32,6 @@ public class UI extends JFrame {
     JPanel gameLayer;
 
     ImageIcon bgImage = new ImageIcon("ui/bg.jpg");
-    // ImageIcon girlImage = new ImageIcon("ui/girl.png"); // Commented out - add girl.png to src/ui/ folder if needed
 
     private JTextArea dialogueText;
     private final Runnable onStartGame;
@@ -60,6 +60,11 @@ public class UI extends JFrame {
         UIManager.put("ComboBox.font", uiFont(Font.PLAIN, 19));
         UIManager.put("List.font", uiFont(Font.PLAIN, 19));
         UIManager.put("TextArea.font", uiFont(Font.PLAIN, 19));
+        
+        // 🔥 เพิ่ม 3 บรรทัดนี้ เพื่อบังคับให้ช่องกรอกข้อความทั้งหมดใช้ Font ที่รองรับภาษาไทย
+        UIManager.put("TextField.font", uiFont(Font.PLAIN, 19));
+        UIManager.put("TextPane.font", uiFont(Font.PLAIN, 19));
+        UIManager.put("EditorPane.font", uiFont(Font.PLAIN, 19));
     }
 
     public UI(Runnable onStartGame) {
@@ -72,16 +77,13 @@ public class UI extends JFrame {
         setTitle("เกมจีบสาว");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // --- 1. ปิด Auto Layout และใส่พื้นหลังดำกันปุ่มตกขอบ ---
         getContentPane().setLayout(null);
         getContentPane().setBackground(Color.BLACK); 
 
-        // --- 2. ตั้งขนาดหน้าต่าง ---
         getContentPane().setPreferredSize(new Dimension(currentWidth, currentHeight));
         pack();
 
         layeredPane.setLayout(null);
-        // สร้าง UI แผ่นกระดาษหลักที่ขนาด 1280x720 เสมอ
         layeredPane.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
         startLayer = createStartScene();
@@ -93,52 +95,34 @@ public class UI extends JFrame {
 
         getContentPane().add(layeredPane);
 
-        // จำพิกัดดั้งเดิม
         tagOriginalBounds(layeredPane);
-
-        // --- 3. บังคับย่อขยายจาก "พื้นที่หน้าต่างที่กางได้จริง" เท่านั้น ---
         applyScale(getContentPane().getWidth(), getContentPane().getHeight());
 
         setLocationRelativeTo(null);
         setVisible(true);
     }
-    // ================= RESIZE SCREEN (RESPONSIVE) =================
-    // ================= RESIZE SCREEN (RESPONSIVE) =================
+
     private void changeScreenSize(int newWidth, int newHeight) {
         GameSettings.getInstance().applyResolution(newWidth, newHeight, false);
-
-        // ขอกางหน้าต่างขนาดใหม่
         getContentPane().setPreferredSize(new Dimension(newWidth, newHeight));
         pack();
         setLocationRelativeTo(null); 
-
-        // ดึงขนาดจริงที่ Windows อนุญาต (ป้องกันปัญหาเลือกจอใหญ่ 1920 แต่หน้าจอคอมจริงเล็กกว่า)
-        int actualWidth = getContentPane().getWidth();
-        int actualHeight = getContentPane().getHeight();
-
-        applyScale(actualWidth, actualHeight);
+        applyScale(getContentPane().getWidth(), getContentPane().getHeight());
     }
 
-    // เมธอดสำหรับคำนวณและสั่งย่อขยาย
-    // เมธอดสำหรับคำนวณและสั่งย่อขยาย
     private void applyScale(int actualWidth, int actualHeight) {
-        // ใช้ Math.min รักษาสัดส่วน 16:9 ภาพจะไม่เบี้ยว ปุ่มจะไม่เป็นวงรี
         double scaleX = (double) actualWidth / BASE_WIDTH;
         double scaleY = (double) actualHeight / BASE_HEIGHT;
         double scale = Math.min(scaleX, scaleY);
 
-        // คำนวณความกว้าง/สูงใหม่
         int scaledWidth = (int) Math.round(BASE_WIDTH * scale);
         int scaledHeight = (int) Math.round(BASE_HEIGHT * scale);
 
-        // คำนวณจุดจัดกึ่งกลาง (ทำให้มีขอบดำซ้ายขวา/บนล่าง คล้ายดูหนัง ถ้าจอสัดส่วนแปลกๆ)
         int offsetX = (actualWidth - scaledWidth) / 2;
         int offsetY = (actualHeight - scaledHeight) / 2;
 
-        // สั่งย่อปุ่มและฟอนต์ทุกชิ้น
         scaleFromBase(layeredPane, scale);
 
-        // บังคับจัดตำแหน่ง Layer หลักให้อยู่ตรงกลางเป๊ะๆ ไม่ให้ตกขอบ
         layeredPane.setBounds(offsetX, offsetY, scaledWidth, scaledHeight);
         startLayer.setBounds(0, 0, scaledWidth, scaledHeight);
         gameLayer.setBounds(0, 0, scaledWidth, scaledHeight);
@@ -146,15 +130,11 @@ public class UI extends JFrame {
         revalidate();
         repaint();
     }
-    // เมธอดช่วยจำตำแหน่งและขนาดดั้งเดิมของ UI (รันครั้งเดียวตอนเปิดเกม)
-    // เมธอดช่วยจำตำแหน่ง ขนาด และ "ฟอนต์" ดั้งเดิมของ UI (รันครั้งเดียวตอนเปิดเกม)
+
     private void tagOriginalBounds(Container container) {
         if (container instanceof JComponent) {
             JComponent comp = (JComponent) container;
-            // จำตำแหน่งและขนาดกล่อง
             comp.putClientProperty("baseBounds", comp.getBounds());
-            
-            // จำรูปแบบและขนาดฟอนต์
             if (comp.getFont() != null) {
                 comp.putClientProperty("baseFont", comp.getFont());
             }
@@ -166,13 +146,9 @@ public class UI extends JFrame {
         }
     }
 
-    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณด้วยอัตราส่วน (กดย่อขยายกี่รอบก็ไม่เพี้ยน)
-    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณอัตราส่วน และย่อขนาดฟอนต์
-    // เมธอดดึงตำแหน่งดั้งเดิมมาคูณอัตราส่วน และย่อขนาดฟอนต์
     private void scaleFromBase(Container container, double scale) {
         if (container instanceof JComponent) {
             JComponent comp = (JComponent) container;
-            
             Rectangle base = (Rectangle) comp.getClientProperty("baseBounds");
             if (base != null) {
                 comp.setBounds(
@@ -182,10 +158,8 @@ public class UI extends JFrame {
                         (int) Math.round(base.height * scale)
                 );
             }
-            
             Font baseFont = (Font) comp.getClientProperty("baseFont");
             if (baseFont != null) {
-                // เพิ่ม Math.max เพื่อป้องกัน Font ขนาดติดลบจนล่องหน
                 float newSize = Math.max(1.0f, (float) (baseFont.getSize() * scale * 0.95f));
                 comp.setFont(baseFont.deriveFont(newSize));
             }
@@ -196,46 +170,42 @@ public class UI extends JFrame {
             }
         }
     }
-    // ================= START =================
+
     JPanel createStartScene() {
+        JPanel p = new JPanel(null){
+            protected void paintComponent(Graphics g){
+                super.paintComponent(g);
+                g.drawImage(bgImage.getImage(), 0, 0, getWidth(), getHeight(), null);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setColor(new Color(20,30,70,180));
+                g2.fillRect(0,0,getWidth(),getHeight());
+            }
+        };
+        p.setBounds(0,0,1280,720);
 
-    JPanel p = new JPanel(null){
-        protected void paintComponent(Graphics g){
-            super.paintComponent(g);
-            // เปลี่ยนจาก 1280, 820 เป็น getWidth(), getHeight()
-            g.drawImage(bgImage.getImage(), 0, 0, getWidth(), getHeight(), null);
+        JButton start = pinkButton("Start game", 200, 350);
+        start.addActionListener(e -> {
+            if (onStartGame != null) {
+                dispose();
+                onStartGame.run();
+            } else {
+                startLayer.setVisible(false);
+                gameLayer.setVisible(true);
+            }
+        });
 
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setColor(new Color(20,30,70,180));
-            g2.fillRect(0,0,getWidth(),getHeight());
-        }
-    };
+        JButton exit = pinkButton("Exit", 200, 430);
+        exit.addActionListener(e -> System.exit(0));
 
-    p.setBounds(0,0,1280,720);
+        JButton online = pinkButton("Online LAN", 200, 510);
+        online.addActionListener(e -> showOnlineMenu());
 
-    JButton start = pinkButton("Start game", 200, 350);
-    start.addActionListener(e -> {
-        if (onStartGame != null) {
-            dispose();
-            onStartGame.run();
-        } else {
-            startLayer.setVisible(false);
-            gameLayer.setVisible(true);
-        }
-    });
+        p.add(start);
+        p.add(exit);
+        p.add(online);
 
-    JButton exit = pinkButton("Exit", 200, 430);
-    exit.addActionListener(e -> System.exit(0));
-
-    JButton online = pinkButton("Online LAN", 200, 510);
-    online.addActionListener(e -> showOnlineMenu());
-
-    p.add(start);
-    p.add(exit);
-    p.add(online);
-
-    return p;
-}
+        return p;
+    }
 
     private void showOnlineMenu() {
         String[] recData = OnlineClient.loadReconnectData();
@@ -243,7 +213,6 @@ public class UI extends JFrame {
         optionsList.add("สร้างห้อง (Host)");
         optionsList.add("เข้าห้อง (Join)");
         
-        // ถ้ามีข้อมูลเซฟ Token ให้เพิ่มปุ่มนี้
         if (recData != null && recData.length == 4) {
             optionsList.add("กลับเข้าห้องเดิม (Reconnect)");
         }
@@ -266,7 +235,6 @@ public class UI extends JFrame {
         String choice = options[selected].toString();
 
         if (choice.equals("กลับเข้าห้องเดิม (Reconnect)")) {
-            // ไม่ต้องถามชื่อ ใช้ชื่อเดิมที่เซฟไว้ได้เลย
             startReconnectLobby(recData);
             return;
         }
@@ -282,6 +250,31 @@ public class UI extends JFrame {
             startJoinLobby(playerName);
         }
     }
+
+    // 🔥 เมธอดใหม่สำหรับวาดหน้าจอหลอด LED และรายชื่อผู้เล่น
+    private void updatePlayerDisplay(JTextPane playersArea, List<String> players, Map<String, Boolean> readyMap) {
+        StringBuilder html = new StringBuilder("<html><body style='padding: 5px; margin: 0;'>");
+        html.append("<b>ผู้เล่นในห้อง:</b><br>");
+        
+        if (players != null) {
+            for (String playerStr : players) {
+                // ลบคำว่า (DC) ออกชั่วคราวเพื่อเอาไปเช็คชื่อใน Map
+                String rawName = playerStr.replace(" (DC)", "");
+                boolean isReady = readyMap != null && readyMap.getOrDefault(rawName, false);
+
+                // 🔥 สีเขียวสว่าง (Ready) และ สีเทา (Not Ready)
+                String color = isReady ? "#32CD32" : "#888888"; 
+                
+                html.append("<span style='color: ").append(color).append("; font-size: 130%;'>●</span> ")
+                    .append("<span style='color: black;'>").append(playerStr).append("</span>")
+                    .append("<br>");
+            }
+        }
+        
+        html.append("</body></html>");
+        playersArea.setText(html.toString());
+    }
+
     private void startReconnectLobby(String[] recData) {
         String ip = recData[0];
         int port = Integer.parseInt(recData[1]);
@@ -297,72 +290,159 @@ public class UI extends JFrame {
 
         JLabel roomInfo = new JLabel("กำลังเชื่อมต่อกลับไปที่ห้อง...");
         roomInfo.setFont(uiFont(Font.PLAIN, 20));
+        roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
-        JTextArea playersArea = new JTextArea();
-        playersArea.setFont(uiFont(Font.PLAIN, 20));
+        // 🔥 เปลี่ยนจาก JTextArea เป็น JTextPane เพื่อรองรับ HTML (หลอด LED)
+        JTextPane playersArea = new JTextPane();
+        playersArea.setContentType("text/html");
         playersArea.setEditable(false);
+        playersArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
+        playersArea.setFont(uiFont(Font.PLAIN, 20));
 
-        JButton leaveBtn = new JButton("ยกเลิก");
-        leaveBtn.addActionListener(e -> {
-            client.disconnect();
-            lobby.dispose();
-        });
+        JButton readyBtn = new JButton("Ready");
+        JButton leaveBtn = new JButton("ออกจากห้อง");
 
-        lobby.add(roomInfo, BorderLayout.NORTH);
-        lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
-        lobby.add(leaveBtn, BorderLayout.SOUTH);
+        JPanel bottom = new JPanel();
+        bottom.add(readyBtn);
+        bottom.add(leaveBtn);
+
+        final boolean[] ready = {false};
+        final GameWindow[] activeGame = {null}; 
+        
+        // 🔥 ตัวแปรเก็บรายชื่อและสถานะ Ready
+        List<String> currentPlayers = new ArrayList<>();
+        Map<String, Boolean> readyMap = new HashMap<>();
 
         client.setListener(new OnlineClient.ClientListener() {
             @Override
             public void onStateSync(String state) {
-                // พิมพ์ค่าเช็คใน Console ว่าส่งอะไรมาบ้าง
-                System.out.println("ข้อมูล Sync จากเซิร์ฟเวอร์: " + state); 
-                
                 roomInfo.setText("เชื่อมต่อสำเร็จ! กำลังโหลดข้อมูล...");
-                
-                // เช็คว่าถ้าโฮสต์กดเริ่มเกมไปแล้ว ให้เปลี่ยนหน้า
                 if (state.contains("GAME_STARTED=true")) {
+                    lobby.setVisible(false); 
+                    UI.this.setVisible(false); 
                     
-                    // ปิดหน้าต่าง Reconnecting
-                    if (lobby != null) lobby.dispose();
-                    
-                    // ปิดหน้าจอหลัก Start Screen (ใช้ UI.this เพื่อความชัวร์)
-                    UI.this.dispose(); 
-                    
-                    // เปิดหน้าเล่นเกม
-                    GameWindow gameWindow = new GameWindow(playerName, client::sendScore);
-                    gameWindow.setVisible(true);
-                    
-                    // 💡 หมายเหตุ: หากต้องการให้หน้าเกมแสดงคะแนน หรือเทิร์นล่าสุด
-                    // จะต้องส่งตัวแปร 'state' เข้าไปใน GameWindow เพื่อเซ็ตค่า UI ด้วย
+                    activeGame[0] = new GameWindow(playerName, score -> {
+                        client.sendScore(score); 
+                        if (activeGame[0] != null) {
+                            activeGame[0].dispose();
+                            activeGame[0] = null;
+                        }
+                        UI.this.setVisible(true);
+                        lobby.setVisible(true);
+                    });
+                    activeGame[0].setVisible(true);
                 }
             }
+            
             @Override
             public void onPlayerListChanged(List<String> players) {
-                playersArea.setText(buildPlayerText(players));
+                currentPlayers.clear();
+                currentPlayers.addAll(players);
+                updatePlayerDisplay(playersArea, currentPlayers, readyMap);
             }
+            
+            @Override
+            public void onReadyStatus(String status) {
+                readyMap.clear();
+                if (!status.isEmpty()) {
+                    String[] parts = status.split(",");
+                    for (String p : parts) {
+                        String[] pair = p.split(":");
+                        if (pair.length == 2) {
+                            readyMap.put(pair[0], Boolean.parseBoolean(pair[1]));
+                        }
+                    }
+                }
+                updatePlayerDisplay(playersArea, currentPlayers, readyMap);
+            }
+            
             @Override
             public void onStartGame() {
-                lobby.dispose();
-                dispose();
-                new GameWindow(playerName, client::sendScore).setVisible(true);
+                lobby.setVisible(false);
+                UI.this.setVisible(false);
+                activeGame[0] = new GameWindow(playerName, score -> {
+                    client.sendScore(score);
+                    if (activeGame[0] != null) {
+                        activeGame[0].dispose();
+                        activeGame[0] = null;
+                    }
+                    UI.this.setVisible(true);
+                    lobby.setVisible(true);
+                });
+                activeGame[0].setVisible(true);
             }
+            
             @Override
             public void onError(String error) {
                 JOptionPane.showMessageDialog(UI.this, "ไม่สามารถกลับเข้าห้องได้: " + error + "\n(อาจเกินเวลา Grace Period หรือเซิร์ฟเวอร์ปิดไปแล้ว)");
-                OnlineClient.clearReconnectData(); // ลบไฟล์ทิ้งถ้าเข้าไม่ได้แล้ว
+                OnlineClient.clearReconnectData(); 
                 lobby.dispose();
+                UI.this.setVisible(true);
             }
+            
+            @Override 
+            public void onScoreboard(String board) {
+                if (activeGame[0] != null) {
+                    activeGame[0].dispose();
+                }
+                JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
+                UI.this.setVisible(true);
+                lobby.setVisible(true);
+                readyBtn.setText("Ready");
+                ready[0] = false;
+                client.sendUnready();
+            }
+            
+            @Override 
+            public void onDisconnected() {
+                if (activeGame[0] != null) {
+                    activeGame[0].dispose();
+                    activeGame[0] = null;
+                }
+                lobby.dispose();
+                JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
+                UI.this.setVisible(true);
+            }
+            
             @Override public void onConnected(String a, String b, int c, int d) {}
-            @Override public void onScoreboard(String s) {}
-            @Override public void onDisconnected() {}
             @Override public void onRole(String r) {}
-            @Override public void onReadyStatus(String s) {}
             @Override public void onAllReady() {}
         });
 
+        readyBtn.addActionListener(e -> {
+            if (!ready[0]) {
+                client.sendReady();
+                readyBtn.setText("Unready");
+                ready[0] = true;
+            } else {
+                client.sendUnready();
+                readyBtn.setText("Ready");
+                ready[0] = false;
+            }
+        });
+
+        leaveBtn.addActionListener(e -> {
+            client.disconnect();
+            lobby.dispose();
+            UI.this.setVisible(true);
+        });
+
+        lobby.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                client.disconnect();
+                lobby.dispose();
+                UI.this.setVisible(true);
+            }
+        });
+
+        lobby.add(roomInfo, BorderLayout.NORTH);
+        lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
+        lobby.add(bottom, BorderLayout.SOUTH);
+
         try {
-            client.connectWithToken(token); // ใช้เชื่อมต่อแบบส่ง Token
+            client.connectWithToken(token);
             lobby.setVisible(true);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ");
@@ -375,11 +455,11 @@ public class UI extends JFrame {
             OnlineServer server = new OnlineServer("Room-1", playerName, 3);
             server.start();
 
-            // 🔥 ให้ Host connect เข้าห้องตัวเอง
-            OnlineClient hostClient = new OnlineClient(InetAddress.getLocalHost().getHostAddress(),
+            // ใช้ Localhost ป้องกันปัญหา IP จำลอง
+            OnlineClient hostClient = new OnlineClient("127.0.0.1",
                     server.getPort(),
                     playerName);
-            hostClient.connect();
+            
 
             JDialog lobby = new JDialog(this, "Online Room (Host)", false);
             lobby.setSize(500, 420);
@@ -390,12 +470,15 @@ public class UI extends JFrame {
             roomInfo.setFont(uiFont(Font.PLAIN, 20));
             roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
-            JTextArea playersArea = new JTextArea();
-            playersArea.setFont(uiFont(Font.PLAIN, 20));
+            // 🔥 เปลี่ยนจาก JTextArea เป็น JTextPane
+            JTextPane playersArea = new JTextPane();
+            playersArea.setContentType("text/html");
             playersArea.setEditable(false);
+            playersArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
+            playersArea.setFont(uiFont(Font.PLAIN, 20));
 
             JButton startBtn = new JButton("เริ่มเกม");
-            startBtn.setEnabled(false); // ปิดไว้ก่อนจนกว่าจะ Ready ครบ
+            startBtn.setEnabled(false); 
 
             JButton closeBtn = new JButton("ปิดห้อง");
 
@@ -407,7 +490,11 @@ public class UI extends JFrame {
             bottom.add(readyBtn);
             
             final boolean[] ready = {false};
-            final GameWindow[] activeGame = {null}; // 🔥 ตัวแปรเก็บหน้าจอเกม
+            final GameWindow[] activeGame = {null}; 
+
+            // 🔥 ตัวแปรเก็บรายชื่อและสถานะ Ready
+            List<String> currentPlayers = new ArrayList<>();
+            Map<String, Boolean> readyMap = new HashMap<>();
 
             readyBtn.addActionListener(e -> {
                 if (!ready[0]) {
@@ -421,28 +508,33 @@ public class UI extends JFrame {
                 }
             });
 
-            // ==========================================
-            // จัดการ Event ของฝั่ง Client (ผู้เล่น)
-            // ==========================================
             hostClient.setListener(new OnlineClient.ClientListener() {
                 @Override
                 public void onPlayerListChanged(List<String> players) {
-                    playersArea.setText(buildPlayerText(players));
+                    currentPlayers.clear();
+                    currentPlayers.addAll(players);
+                    updatePlayerDisplay(playersArea, currentPlayers, readyMap);
                 }
 
                 @Override
                 public void onReadyStatus(String status) {
                     boolean everyoneReady = true;
-                    String[] parts = status.split(",");
-                    for (String p : parts) {
-                        String[] pair = p.split(":");
-                        if (pair.length == 2) {
-                            if (!Boolean.parseBoolean(pair[1])) {
-                                everyoneReady = false;
+                    readyMap.clear();
+                    if (!status.isEmpty()) {
+                        String[] parts = status.split(",");
+                        for (String p : parts) {
+                            String[] pair = p.split(":");
+                            if (pair.length == 2) {
+                                boolean isR = Boolean.parseBoolean(pair[1]);
+                                readyMap.put(pair[0], isR);
+                                if (!isR) everyoneReady = false;
                             }
                         }
+                    } else {
+                        everyoneReady = false;
                     }
                     startBtn.setEnabled(everyoneReady);
+                    updatePlayerDisplay(playersArea, currentPlayers, readyMap);
                 }
 
                 @Override 
@@ -450,30 +542,27 @@ public class UI extends JFrame {
                     lobby.setVisible(false); 
                     UI.this.setVisible(false); 
                     
-                    // 🔥 แก้ไขการเรียก GameWindow แบบใหม่ ให้เด้งหน้า Lobby มารอทันทีที่กดจบเกม
                     activeGame[0] = new GameWindow(playerName, score -> {
-                        hostClient.sendScore(score); // ส่งคะแนน
-                        
-                        // ปิดหน้าเกมของตัวเอง
+                        hostClient.sendScore(score);
                         if (activeGame[0] != null) {
                             activeGame[0].dispose();
                             activeGame[0] = null;
                         }
-                        
-                        // เปิดหน้า Lobby กลับมารอเพื่อน
                         UI.this.setVisible(true);
                         lobby.setVisible(true);
                     });
-                    
                     activeGame[0].setVisible(true);
                 }
 
                 @Override 
                 public void onScoreboard(String board) {
-                    // 🔥 แสดงคะแนนเมื่อทุกคนเล่นจบ
+                    if (activeGame[0] != null) {
+                        activeGame[0].dispose();
+                    }
                     JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
+                    UI.this.setVisible(true);
+                    lobby.setVisible(true);
                     
-                    // รีเซ็ตปุ่ม Ready ให้กลับเป็นสถานะปกติ
                     readyBtn.setText("Ready");
                     ready[0] = false;
                     hostClient.sendUnready();
@@ -487,44 +576,43 @@ public class UI extends JFrame {
                 @Override public void onAllReady(){}
             });
 
-            // ==========================================
-            // จัดการ Event ของฝั่ง Server (โฮสต์)
-            // ==========================================
             server.setListener(new OnlineServer.ServerListener() {
                 @Override
-                public void onPlayerListChanged(List<String> players) {
-                    playersArea.setText(buildPlayerText(players));
-                }
-
+                public void onPlayerListChanged(List<String> players) {} // จัดการโดย hostClient แล้ว
                 @Override
-                public void onScoreboardReady(String scoreboardText) {
-                    // 🔥 ปล่อยว่างไว้ ให้ ClientListener จัดการแสดงผลเอง ห้องจะได้ไม่พัง
-                }
-
+                public void onScoreboardReady(String scoreboardText) {}
                 @Override
                 public void onError(String error) {
                     JOptionPane.showMessageDialog(UI.this, error);
                 }
             });
 
-            // ==========================================
-            // จัดการปุ่มต่างๆ
-            // ==========================================
             startBtn.addActionListener(e -> {
                 server.startGame();
             });
 
             closeBtn.addActionListener(e -> {
                 server.stop();
+                hostClient.disconnect();
                 lobby.dispose();
-                UI.this.setVisible(true); // 🔥 ให้กลับมาหน้าเมนูหลักเมื่อกดปิดห้อง
+                UI.this.setVisible(true); 
             });
 
-            // นำประกอบลงหน้าต่าง
+            lobby.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+            lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                    server.stop();
+                    hostClient.disconnect();
+                    lobby.dispose();
+                    UI.this.setVisible(true);
+                }
+            });
+
             lobby.add(roomInfo, BorderLayout.NORTH);
             lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
             lobby.add(bottom, BorderLayout.SOUTH);
-
+            hostClient.connect();
             lobby.setVisible(true);
 
         } catch (Exception e) {
@@ -552,10 +640,14 @@ public class UI extends JFrame {
 
         JLabel roomInfo = new JLabel("กำลังเชื่อมต่อ...");
         roomInfo.setFont(uiFont(Font.PLAIN, 20));
+        roomInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
-        JTextArea playersArea = new JTextArea();
-        playersArea.setFont(uiFont(Font.PLAIN, 20));
+        // 🔥 เปลี่ยนจาก JTextArea เป็น JTextPane
+        JTextPane playersArea = new JTextPane();
+        playersArea.setContentType("text/html");
         playersArea.setEditable(false);
+        playersArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
+        playersArea.setFont(uiFont(Font.PLAIN, 20));
 
         JButton readyBtn = new JButton("Ready");
         JButton leaveBtn = new JButton("ออกจากห้อง");
@@ -565,25 +657,40 @@ public class UI extends JFrame {
         bottom.add(leaveBtn);
 
         final boolean[] ready = {false};
-        final String[] assignedName = {playerName};
-        final GameWindow[] activeGame = {null}; // 🔥 ตัวแปรเก็บหน้าจอเกม
+        final GameWindow[] activeGame = {null}; 
 
-        // ==========================================
-        // จัดการ Event ของฝั่ง Client (ผู้เล่น)
-        // ==========================================
+        // 🔥 ตัวแปรเก็บรายชื่อและสถานะ Ready
+        List<String> currentPlayers = new ArrayList<>();
+        Map<String, Boolean> readyMap = new HashMap<>();
+
         client.setListener(new OnlineClient.ClientListener() {
-
             @Override
-            public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayers) {
+            public void onConnected(String playerId, String roomName, int maxPlayers, int currentPlayersList) {
                 max[0] = maxPlayers;
-                roomInfo.setText("ห้อง: " + roomName + " | " + currentPlayers + "/" + maxPlayers);
+                roomInfo.setText("ห้อง: " + roomName + " | " + currentPlayersList + "/" + maxPlayers);
             }
 
             @Override
             public void onPlayerListChanged(List<String> players) {
-                playersArea.setText(buildPlayerText(players));
-                roomInfo.setText("ห้อง: " + selectedRoom.getRoomName()
-                        + " | " + players.size() + "/" + max[0]);
+                currentPlayers.clear();
+                currentPlayers.addAll(players);
+                updatePlayerDisplay(playersArea, currentPlayers, readyMap);
+                roomInfo.setText("ห้อง: " + selectedRoom.getRoomName() + " | " + players.size() + "/" + max[0]);
+            }
+            
+            @Override
+            public void onReadyStatus(String status) {
+                readyMap.clear();
+                if (!status.isEmpty()) {
+                    String[] parts = status.split(",");
+                    for (String p : parts) {
+                        String[] pair = p.split(":");
+                        if (pair.length == 2) {
+                            readyMap.put(pair[0], Boolean.parseBoolean(pair[1]));
+                        }
+                    }
+                }
+                updatePlayerDisplay(playersArea, currentPlayers, readyMap);
             }
 
             @Override 
@@ -591,30 +698,27 @@ public class UI extends JFrame {
                 lobby.setVisible(false);
                 UI.this.setVisible(false);
                 
-                // 🔥 แก้ไขการเรียก GameWindow ฝั่ง Client
                 activeGame[0] = new GameWindow(playerName, score -> {
-                    client.sendScore(score); // ส่งคะแนน
-                    
-                    // ปิดหน้าเกมของตัวเอง
+                    client.sendScore(score); 
                     if (activeGame[0] != null) {
                         activeGame[0].dispose();
                         activeGame[0] = null;
                     }
-                    
-                    // เปิดหน้า Lobby กลับมารอเพื่อน
                     UI.this.setVisible(true);
                     lobby.setVisible(true);
                 });
-                
                 activeGame[0].setVisible(true);
             }
 
             @Override 
             public void onScoreboard(String board) {
-                // 🔥 แสดงคะแนนเมื่อทุกคนเล่นจบ
+                if (activeGame[0] != null) {
+                    activeGame[0].dispose();
+                }
                 JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
+                UI.this.setVisible(true);
+                lobby.setVisible(true);
                 
-                // รีเซ็ตปุ่ม Ready ให้กลับเป็นสถานะปกติ
                 readyBtn.setText("Ready");
                 ready[0] = false;
                 client.sendUnready();
@@ -624,39 +728,24 @@ public class UI extends JFrame {
             
             @Override 
             public void onError(String e) {
-                // (ไม่บังคับ) โชว์ข้อความ error แจ้งสาเหตุ
                 System.out.println("Client Error: " + e);
             }
             
             @Override 
             public void onDisconnected() {
-                // 1. ถ้า Client กำลังเล่นเกมค้างอยู่ ให้ปิดหน้าต่างเกมทิ้งทันที
                 if (activeGame[0] != null) {
                     activeGame[0].dispose();
                     activeGame[0] = null;
                 }
-                
-                // 2. ปิดหน้าต่าง Lobby
                 lobby.dispose();
-                
-                // 3. แจ้งเตือนผู้เล่นว่าหลุดแล้ว
-                JOptionPane.showMessageDialog(UI.this, 
-                        "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", 
-                        "ตัดการเชื่อมต่อ", 
-                        JOptionPane.WARNING_MESSAGE);
-                
-                // 4. เด้งกลับหน้าจอเมนูหลัก เริ่มต้นใหม่
+                JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
                 UI.this.setVisible(true);
             }
 
             @Override public void onRole(String r) {}
-            @Override public void onReadyStatus(String s) {}
             @Override public void onAllReady() {}
         });
 
-        // ==========================================
-        // จัดการปุ่มต่างๆ
-        // ==========================================
         readyBtn.addActionListener(e -> {
             if (!ready[0]) {
                 client.sendReady();
@@ -672,10 +761,19 @@ public class UI extends JFrame {
         leaveBtn.addActionListener(e -> {
             client.disconnect();
             lobby.dispose();
-            UI.this.setVisible(true); // 🔥 ให้กลับมาหน้าเมนูหลักเมื่อกดออกจากห้อง
+            UI.this.setVisible(true); 
         });
 
-        // นำประกอบลงหน้าต่าง
+        lobby.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                client.disconnect();
+                lobby.dispose();
+                UI.this.setVisible(true);
+            }
+        });
+
         lobby.add(roomInfo, BorderLayout.NORTH);
         lobby.add(new JScrollPane(playersArea), BorderLayout.CENTER);
         lobby.add(bottom, BorderLayout.SOUTH);
@@ -689,88 +787,73 @@ public class UI extends JFrame {
     }
 
     private OnlineRoomInfo chooseRoom(List<OnlineRoomInfo> rooms) {
+        if (rooms != null && !rooms.isEmpty()) {
+            Object selected = JOptionPane.showInputDialog(
+                    this,
+                    "เลือกห้องที่ต้องการเข้า",
+                    "Join Room",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    rooms.toArray(),
+                    rooms.get(0)
+            );
 
-    // ถ้ามีห้องจาก LAN ให้เลือกตามปกติก่อน
-    if (rooms != null && !rooms.isEmpty()) {
-        Object selected = JOptionPane.showInputDialog(
+            if (selected instanceof OnlineRoomInfo) {
+                return (OnlineRoomInfo) selected;
+            }
+            return null;
+        }
+
+        JTextField ipField = new JTextField("");
+        JTextField portField = new JTextField();
+
+        JPanel panel = new JPanel(new GridLayout(2, 2, 10, 10));
+        panel.add(new JLabel("IP:"));
+        panel.add(ipField);
+        panel.add(new JLabel("Port:"));
+        panel.add(portField);
+
+        int result = JOptionPane.showConfirmDialog(
                 this,
-                "เลือกห้องที่ต้องการเข้า",
-                "Join Room",
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                rooms.toArray(),
-                rooms.get(0)
+                panel,
+                "ใส่ IP และ Port",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
         );
 
-        if (selected instanceof OnlineRoomInfo) {
-            return (OnlineRoomInfo) selected;
+        if (result != JOptionPane.OK_OPTION) {
+            return null;
         }
-        return null;
-    }
 
-    // ====== Manual Input (แยก IP / Port) ======
+        String ip = ipField.getText().trim();
+        String portText = portField.getText().trim();
 
-    JTextField ipField = new JTextField("");
-    JTextField portField = new JTextField();
-
-    JPanel panel = new JPanel(new GridLayout(2, 2, 10, 10));
-    panel.add(new JLabel("IP:"));
-    panel.add(ipField);
-    panel.add(new JLabel("Port:"));
-    panel.add(portField);
-
-    int result = JOptionPane.showConfirmDialog(
-            this,
-            panel,
-            "ใส่ IP และ Port",
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.PLAIN_MESSAGE
-    );
-
-    if (result != JOptionPane.OK_OPTION) {
-        return null;
-    }
-
-    String ip = ipField.getText().trim();
-    String portText = portField.getText().trim();
-
-    if (ip.isEmpty() || portText.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "กรุณากรอก IP และ Port");
-        return null;
-    }
-
-    int port;
-    try {
-        port = Integer.parseInt(portText);
-    } catch (NumberFormatException e) {
-        JOptionPane.showMessageDialog(this, "Port ต้องเป็นตัวเลข");
-        return null;
-    }
-
-    return new OnlineRoomInfo("Manual Room", ip, port, 0, 3, "Unknown");
-}
-
-    private String buildPlayerText(List<String> players) {
-        StringBuilder text = new StringBuilder("ผู้เล่นในห้อง:\n");
-        for (String player : players) {
-            text.append("- ").append(player).append("\n");
+        if (ip.isEmpty() || portText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "กรุณากรอก IP และ Port");
+            return null;
         }
-        return text.toString().trim();
+
+        int port;
+        try {
+            port = Integer.parseInt(portText);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Port ต้องเป็นตัวเลข");
+            return null;
+        }
+
+        return new OnlineRoomInfo("Manual Room", ip, port, 0, 3, "Unknown");
     }
 
     // ================= GAME =================
     JPanel createGameScene() {
-
         JPanel p = new JPanel(null){
            protected void paintComponent(Graphics g){
                 super.paintComponent(g);
-                // เปลี่ยนจาก 1280, 820 เป็น getWidth(), getHeight()
                 g.drawImage(bgImage.getImage(), 0, 0, getWidth(), getHeight(), null);
             }
         };
         p.setBounds(0, 0, 1280, 720);
 
-        // TOP BAR
         JPanel topBar = new JPanel(null);
         topBar.setBounds(0, 0, 1280, 100);
         topBar.setOpaque(false);
@@ -779,17 +862,12 @@ public class UI extends JFrame {
         topBar.add(ovalLabel("⏰ 17.00", 200, 25));
         p.add(topBar);
 
-        // JLabel girl = new JLabel(girlImage);
-        // girl.setBounds(450,100,400,500);
-        // p.add(girl);
-
         JButton shop = circleButton("🛒", 50, 200);
         shop.addActionListener(e -> JOptionPane.showMessageDialog(UI.this, "ร้านค้ามีไอเทมให้ซื้อ!"));
         JButton menu = circleButton("≡", 1180, 20);
 
         p.add(shop);
         p.add(menu);
-
 
         int y = 120;
         for(int i=1;i<=5;i++){
@@ -815,7 +893,6 @@ public class UI extends JFrame {
         dialogue.setBounds(200, 520, 880, 180);
         p.add(dialogue);
 
-        // POPUP MENU
         JPanel menuPopup = createPopup();
         menuPopup.setVisible(false);
         p.add(menuPopup);
@@ -838,9 +915,8 @@ public class UI extends JFrame {
         };
 
         panel.setLayout(null);
-        panel.setBounds(390, 150, 500, 450); // ปรับขนาดกล่อง Popup ให้พอดี
+        panel.setBounds(390, 150, 500, 450); 
         
-        // --- 1. กลุ่มปุ่มเมนูหลัก ---
         JButton save = purpleButton("Save game", 120, 60);
         save.addActionListener(e -> JOptionPane.showMessageDialog(UI.this, "บันทึกเกมแล้ว!"));
         JButton load = purpleButton("Load save", 120, 140);
@@ -848,8 +924,6 @@ public class UI extends JFrame {
         JButton displayScale = purpleButton("Display Scale", 120, 220);
         JButton exit = purpleButton("Exit", 120, 300);
 
-        // --- 2. กลุ่มปุ่มเลือกขนาดจอ (ซ่อนไว้ตอนแรก) ---
-        // แนะนำให้ใช้ขนาดที่สัดส่วนใกล้เคียงกัน ภาพจะได้ไม่ยืด/หดจนผิดรูป
         JButton size1 = purpleButton("1920 x 1080", 120, 60);
         JButton size2 = purpleButton("1280 x 720", 120, 140);
         JButton size3 = purpleButton("960 x 540", 120, 220);
@@ -857,33 +931,27 @@ public class UI extends JFrame {
 
         size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
 
-        // --- 3. ปุ่มปิด (X) ---
         JButton close = new JButton("X");
         close.setBounds(440,10,50,50);
         close.setBackground(Color.BLACK); close.setForeground(Color.WHITE); close.setFocusPainted(false);
         close.addActionListener(e -> panel.setVisible(false));
 
-        // --- 4. จัดการ Event สลับเมนู ---
         displayScale.addActionListener(e -> {
-            // ซ่อนเมนูหลัก แสดงเมนูขนาดจอ
             save.setVisible(false); load.setVisible(false); displayScale.setVisible(false); exit.setVisible(false);
             size1.setVisible(true); size2.setVisible(true); size3.setVisible(true); backBtn.setVisible(true);
         });
 
         backBtn.addActionListener(e -> {
-            // ซ่อนเมนูขนาดจอ แสดงเมนูหลัก
             size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
             save.setVisible(true); load.setVisible(true); displayScale.setVisible(true); exit.setVisible(true);
         });
 
-        // --- 5. Event การเปลี่ยนขนาดหน้าจอ ---
         size1.addActionListener(e -> changeScreenSize(1920, 1080));
         size2.addActionListener(e -> changeScreenSize(1280, 720));
         size3.addActionListener(e -> changeScreenSize(960, 540));
         
         exit.addActionListener(e -> System.exit(0));
 
-        // แอดทุกปุ่มลงใน Panel
         panel.add(save); panel.add(load); panel.add(displayScale); panel.add(exit);
         panel.add(size1); panel.add(size2); panel.add(size3); panel.add(backBtn);
         panel.add(close);
@@ -893,13 +961,10 @@ public class UI extends JFrame {
 
     // ================= DIALOGUE =================
     JPanel createDialogueBox(String name, String text){
-
         JPanel panel = new JPanel(){
             protected void paintComponent(Graphics g){
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
-
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(255,255,255,230));
                 g2.fillRoundRect(0,0,getWidth()-10,getHeight()-10,40,40);
                 g2.dispose();
@@ -936,31 +1001,19 @@ public class UI extends JFrame {
 
     // ================= DESIGN =================
     JButton pinkButton(String text,int x,int y){
-        RoundedButton b = new RoundedButton(
-                text,
-                new Color(255,120,160),
-                new Color(255,150,180)
-        );
+        RoundedButton b = new RoundedButton(text, new Color(255,120,160), new Color(255,150,180));
         b.setBounds(x,y,250,60);
         return b;
     }
 
     JButton purpleButton(String text,int x,int y){
-        RoundedButton b = new RoundedButton(
-                text,
-                new Color(120,100,255),
-                new Color(150,130,255)
-        );
+        RoundedButton b = new RoundedButton(text, new Color(120,100,255), new Color(150,130,255));
         b.setBounds(x,y,260,60);
         return b;
     }
 
     JButton circleButton(String text,int x,int y){
-        RoundedButton b = new RoundedButton(
-                text,
-                new Color(255,100,150),
-                new Color(255,130,170)
-        );
+        RoundedButton b = new RoundedButton(text, new Color(255,100,150), new Color(255,130,170));
         b.setBounds(x,y,60,60);
         return b;
     }
@@ -969,8 +1022,7 @@ public class UI extends JFrame {
         JLabel label = new JLabel(text, SwingConstants.CENTER){
             protected void paintComponent(Graphics g){
                 Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(200,80,130));
                 g2.fillRoundRect(0,0,getWidth(),getHeight(),50,50);
                 super.paintComponent(g);
@@ -989,9 +1041,7 @@ public class UI extends JFrame {
 }
 
 // ================= CUSTOM ROUNDED BUTTON =================
-
 class RoundedButton extends JButton {
-
     private Color normalColor;
     private Color hoverColor;
     private boolean isHover = false;
@@ -1024,8 +1074,7 @@ class RoundedButton extends JButton {
 
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         GradientPaint gp = new GradientPaint(
                 0,0,

@@ -4,6 +4,8 @@ import core.GameSettings;
 import core.Player;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
@@ -82,8 +84,26 @@ public class GameWindow extends JFrame {
         applyUiFonts();
         
         setTitle("เกมจีบสาว 7 Days - " + this.playerDisplayName);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+
+        // ดักจับการกดกากบาท (X) เพื่อให้ส่งคะแนน/ยอมแพ้ แทนที่จะปิดโปรแกรมทิ้งไปเลย
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int confirm = JOptionPane.showConfirmDialog(GameWindow.this, 
+                        "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
+                        "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
+                
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (GameWindow.this.onFinalScore != null) {
+                        reportFinalScoreIfNeeded(); // ส่งคะแนน แล้วหน้าต่าง Lobby จะเด้งขึ้นมาเอง
+                    } else {
+                        System.exit(0); // เล่นโหมดออฟไลน์ ปิดโปรแกรมได้เลย
+                    }
+                }
+            }
+        });
 
         eventManager = new EventManager();
         player = new Player(); 
@@ -262,16 +282,30 @@ public class GameWindow extends JFrame {
             showSettingsDialog();
         });
 
-        // ปุ่ม Exit
+        // 🔥 ปุ่ม Exit (แก้ไขให้มี Popup ถามยืนยัน และแยกโหมดออนไลน์/ออฟไลน์ชัดเจน)
         JButton exitBtn = new JButton("Exit");
         exitBtn.setFont(menuFont);
         exitBtn.setBackground(new Color(255, 100, 100));
         exitBtn.setForeground(Color.WHITE);
         exitBtn.setFocusPainted(false);
         exitBtn.addActionListener(e -> {
-            menuDialog.dispose();
-            dispose();
-            SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+            
+            int confirm = JOptionPane.showConfirmDialog(menuDialog, 
+                    "คุณต้องการออกจากเกมนี้ใช่หรือไม่?\n(หากเล่นโหมดออนไลน์ คะแนนจะถูกส่งทันที)", 
+                    "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                menuDialog.dispose(); // ปิดเมนู
+                
+                if (onFinalScore != null) {
+                    // ถ้าเล่นออนไลน์ ส่งคะแนนให้เซิร์ฟเวอร์ แล้วเดี๋ยว Lobby จะถูกดึงกลับมาให้เอง
+                    reportFinalScoreIfNeeded(); 
+                } else {
+                    // ถ้าเล่นออฟไลน์ ปิดหน้าจอเกม แล้วเปิดหน้า UI เริ่มต้นใหม่
+                    dispose();
+                    SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+                }
+            }
         });
 
         menuDialog.add(continueBtn);
@@ -413,7 +447,10 @@ public class GameWindow extends JFrame {
                 }
                 nextDayButton.addActionListener(e -> {
                     dispose();
-                    SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+                    // ตรวจสอบก่อนว่าไม่ได้อยู่ในโหมดออนไลน์ (ถ้าออนไลน์จะมี Popup สรุปคะแนนจัดการแล้ว)
+                    if(onFinalScore == null) {
+                        SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
+                    }
                 });
             } else {
                 advanceDay(); 
@@ -686,4 +723,5 @@ public class GameWindow extends JFrame {
             "New Game",
             JOptionPane.INFORMATION_MESSAGE);
     }
+    
 }
