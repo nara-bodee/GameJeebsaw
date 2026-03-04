@@ -1,0 +1,242 @@
+{
+  "days": [
+    {
+      "day": 1,
+      "eventId": "D1_E1",
+      "background": "images_Story/image_StoryDay1/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay1/heroine.png",
+      "dialogue": [
+        "ตอนเย็น: นนท์เจอเลม่อนที่ร้านหน้าปากซอย",
+        "เลม่อน: 'เอ่อ... ขอโทษนะคะ พอดีหนูลืมกระเป๋าตังค์ไว้ที่บ้านน่ะค่ะ'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C1_1",
+          "text": "รวมของเธอมาจ่ายที่ผมเลยครับ",
+          "require": {},
+          "effect": {"love": 20, "charm": 5, "money": 0},
+          "resultText": "เลม่อน: 'หูยย ฮีโร่! ขอบคุณนะนาย!' [ความชอบ +20]"
+        },
+        {
+          "choiceId": "C1_2",
+          "text": "ให้ยืมก่อนได้นะ แต่ต้องคืนด้วยล่ะ",
+          "require": {},
+          "effect": {"love": 10, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'คืนแน่นอนจ้า ขอบใจนะนายนนท์' [ความชอบ +10]"
+        },
+        {
+          "choiceId": "C1_3",
+          "text": "ขาดกี่บาท เดี๋ยวเราช่วยออก",
+          "require": {},
+          "effect": {"love": 5, "charm": 0, "money": -5},
+          "resultText": "เลม่อน: 'นิดหน่อยเอง ขอบใจนะ' [ความชอบ +5]"
+        },
+        {
+          "choiceId": "C1_4",
+          "text": "(เดินหนีไปเงียบๆ)",
+          "require": {},
+          "effect": {"love": -20, "charm": 0, "money": 0},
+          "resultText": "(เลม่อนมองตามด้วยสายตาละห้อย) [ความชอบ -20]"
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "eventId": "D2_E1",
+      "background": "images_Story/image_StoryDay2/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay2/heroine.png",
+      "dialogue": [
+        "ตอนเที่ยง: เลม่อนกวักมือเรียกให้นั่งกินข้าวด้วย",
+        "เลม่อน: 'นนท์! ทางนี้ๆ! มานั่งกินข้าวเที่ยงด้วยกันสิ'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C2_1",
+          "text": "ยิ้มและนั่งข้างเธอโดยไม่สั่งเพิ่มอะไร",
+          "require": {},
+          "effect": {"love": 15, "charm": 10, "money": 0},
+          "resultText": "เลม่อน: 'ดีใจด้วย เล่นกีฬาเหนื่อยมากค่า' [ความชอบ +15]"
+        },
+        {
+          "choiceId": "C2_2",
+          "text": "สั่งเพิ่มเครื่องดื่มให้เธอ",
+          "require": {"moneyMin": 30},
+          "effect": {"love": 25, "charm": 15, "money": -30},
+          "resultText": "เลม่อน: 'โห! ซื้อให้หนูเลยเหรอ ขอบคุณมาก!' [ความชอบ +25]"
+        },
+        {
+          "choiceId": "C2_3",
+          "text": "บอกว่ามีธุระจำเป็น",
+          "require": {},
+          "effect": {"love": -10, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'อ๋อ... งั้นไหน' (ดูเศร้า) [ความชอบ -10]"
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "eventId": "D3_E1",
+      "background": "images_Story/image_StoryDay3/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay3/heroine.png",
+      "dialogue": [
+        "หลังเลิกเรียน: เลม่อนแสดงว่าเธอต้องการความช่วยเหลือ",
+        "เลม่อน: 'นนท์ช่วยหนูหน่อยได้มั้ย โปรเจคเนี่ยเหนื่อยมากเลย'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C3_1",
+          "text": "ช่วยเธอทำโปรเจค",
+          "require": {},
+          "effect": {"love": 30, "charm": 20, "money": 0},
+          "resultText": "เลม่อน: 'ขอบคุณมากค่า! เธอช่วยหนูได้ประเทศด้วย!' [ความชอบ +30]"
+        },
+        {
+          "choiceId": "C3_2",
+          "text": "บอกว่าเธอต้องทำเอง เพื่อเรียนรู้",
+          "require": {},
+          "effect": {"love": 5, "charm": 10, "money": 0},
+          "resultText": "เลม่อน: 'ก็... ถูกแล้วนี่ อึเถิด!' [ความชอบ +5]"
+        },
+        {
+          "choiceId": "C3_3",
+          "text": "ปฏิเสธและจากไป",
+          "require": {},
+          "effect": {"love": -15, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'เอาเถอะ ไม่ต้องช่วยก็ได้' [ความชอบ -15]"
+        }
+      ]
+    },
+    {
+      "day": 4,
+      "eventId": "D4_E1",
+      "background": "images_Story/image_StoryDay4/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay4/heroine.png",
+      "dialogue": [
+        "วันอาทิตย์: เลม่อนเชิญให้ไปเที่ยว",
+        "เลม่อน: 'เธอว่างมั้ย วันนี้งานшколาปิด ลองไปเที่ยวกันบ้าง?'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C4_1",
+          "text": "ตกลงและไปเที่ยวด้วยกันทั้งวัน",
+          "require": {"moneyMin": 50},
+          "effect": {"love": 40, "charm": 20, "money": -50},
+          "resultText": "เลม่อน: 'มามากค่า เธอดีใจมั้ย?' วันนี้สวยมากจริง ๆ [ความชอบ +40]"
+        },
+        {
+          "choiceId": "C4_2",
+          "text": "ตกลงแต่ไปห้องน้อยกว่า",
+          "require": {},
+          "effect": {"love": 20, "charm": 15, "money": -20},
+          "resultText": "เลม่อน: 'ก็ดีค่า เพียงแค่ได้อยู่กับเธอก็พอ' [ความชอบ +20]"
+        },
+        {
+          "choiceId": "C4_3",
+          "text": "ปฏิเสธเนื่องจากไม่มีเงิน",
+          "require": {},
+          "effect": {"love": -5, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'อ๋อ อย่างนั้นเหรอ ไหว้เถิด' [ความชอบ -5]"
+        }
+      ]
+    },
+    {
+      "day": 5,
+      "eventId": "D5_E1",
+      "background": "images_Story/image_StoryDay5/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay5/heroine.png",
+      "dialogue": [
+        "เธอพบเลม่อนกำลังเศร้า",
+        "เลม่อน: 'เอ่อ... มีปัญหาเรื่องครอบครัวค่ะ...'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C5_1",
+          "text": "ฟังเธออย่างตั้งใจและให้เสียงปรึกษา",
+          "require": {},
+          "effect": {"love": 35, "charm": 25, "money": 0},
+          "resultText": "เลม่อน: 'ขอบคุณที่ฟังนะ รู้สึกดีขึ้นแล้ว' [ความชอบ +35]"
+        },
+        {
+          "choiceId": "C5_2",
+          "text": "อย่างอ่อนน้อย พยายามเปลี่ยนเรื่อง",
+          "require": {},
+          "effect": {"love": 5, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'ก็... ขอบใจนะ' (แต่ดูเศร้าอยู่) [ความชอบ +5]"
+        },
+        {
+          "choiceId": "C5_3",
+          "text": "สนใจไม่เหมือนของเธอ",
+          "require": {},
+          "effect": {"love": -25, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: '... ลืมเรื่องนี้ไปเถอะ' [ความชอบ -25]"
+        }
+      ]
+    },
+    {
+      "day": 6,
+      "eventId": "D6_E1",
+      "background": "images_Story/image_StoryDay6/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay6/heroine.png",
+      "dialogue": [
+        "คงเธออาจลังใจเดือดร้อน",
+        "เลม่อน: 'นนท์... เธอรักหนูมั้ย?'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C6_1",
+          "text": "บอกเธออย่างตรงไปตรงมาว่ารักเธอ",
+          "require": {"love": 50, "charm": 20},
+          "effect": {"love": 50, "charm": 20, "money": 0},
+          "resultText": "เลม่อน: (หน้าแดง) '...หนูก็... ชอบเธอมาก่อน' [ความชอบ +50]"
+        },
+        {
+          "choiceId": "C6_2",
+          "text": "บอกว่าเธอเป็นคนสำคัญต่อหนู",
+          "require": {"love": 30},
+          "effect": {"love": 30, "charm": 15, "money": 0},
+          "resultText": "เลม่อน: 'ก็ โอเค... ที่อย่างน้อยเธออยู่ถัดไป' [ความชอบ +30]"
+        },
+        {
+          "choiceId": "C6_3",
+          "text": "หลีกเลี่ยงและเปลี่ยนเรื่อง",
+          "require": {},
+          "effect": {"love": -40, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: '... ขวางแค่นั้นเหรอ' (กลับไปด้วยสีหน้าเศร้า) [ความชอบ -40]"
+        }
+      ]
+    },
+    {
+      "day": 7,
+      "eventId": "D7_E1",
+      "background": "images_Story/image_StoryDay7/bg.png",
+      "heroineSprite": "images_Story/image_StoryDay7/heroine.png",
+      "dialogue": [
+        "วันสุดท้าย",
+        "เลม่อน: 'นนท์ซ้อย... อยู่ด้วยกันต่อไปนะ'"
+      ],
+      "choices": [
+        {
+          "choiceId": "C7_1",
+          "text": "สัญญากับเธอว่าจะอยู่ด้วยเสมอ",
+          "require": {"love": 50},
+          "effect": {"love": 30, "charm": 10, "money": 0},
+          "resultText": "เลม่อน: 'สัญญานะ! จะอยู่ด้วยกันตลอดไป' [ความชอบ +30] - จบเกม!"
+        },
+        {
+          "choiceId": "C7_2",
+          "text": "บอกว่าจะค่อยดู",
+          "require": {},
+          "effect": {"love": 5, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: 'หลังจากทั้งหมด ก็... ดีไปก่อนสินะ' (ยิ้มอย่างอ่อน) [ความชอบ +5]"
+        },
+        {
+          "choiceId": "C7_3",
+          "text": "ลาก่อนแล้วไปต่อชีวิต",
+          "require": {},
+          "effect": {"love": -50, "charm": 0, "money": 0},
+          "resultText": "เลม่อน: '...นั่นมันส่วนที่แย่ที่สุดของวัน.' - จบเกม (แย่) [ความชอบ -50]"
+        }
+      ]
+    }
+  ]
+}
