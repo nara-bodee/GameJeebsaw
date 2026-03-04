@@ -26,9 +26,15 @@ public class MenuPanel extends JPanel {
             new Color(150, 180, 200), new Color(180, 210, 230));
         loadGameBtn.addActionListener(e -> mainFrame.showLoadGame());
         add(loadGameBtn);
+
+        // ปุ่ม Multiplayer
+        JButton multiplayerBtn = createStyledButton("Multiplayer", 200, 440,
+            new Color(180, 120, 255), new Color(210, 150, 255));
+        multiplayerBtn.addActionListener(e -> mainFrame.openMultiplayer());
+        add(multiplayerBtn);
         
         // ปุ่ม Exit
-        JButton exitBtn = createStyledButton("Exit", 200, 440,
+        JButton exitBtn = createStyledButton("Exit", 200, 520,
             new Color(255, 120, 160), new Color(255, 150, 180));
         exitBtn.addActionListener(e -> System.exit(0));
         add(exitBtn);

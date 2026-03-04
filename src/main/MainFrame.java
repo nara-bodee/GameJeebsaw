@@ -3,6 +3,7 @@ package main;
 import core.GameSettings;
 import java.awt.*;
 import javax.swing.*;
+import ui.UI;
 
 public class MainFrame extends JFrame {
     
@@ -19,6 +20,7 @@ public class MainFrame extends JFrame {
     private LoadGamePanel loadGamePanel;
     private GamePanel gamePanel;
     private ShopPanel shopPanel;
+    private UI multiplayerUi;
     
     public MainFrame() {
         setTitle("เกมจีบสาว 7 Days");
@@ -85,6 +87,13 @@ public class MainFrame extends JFrame {
     
     public void returnToGame() {
         cardLayout.show(mainContainer, GAME_PANEL);
+    }
+
+    public void openMultiplayer() {
+        if (multiplayerUi == null || !multiplayerUi.isDisplayable()) {
+            multiplayerUi = new UI(null, false, true);
+        }
+        multiplayerUi.openOnlineMenu();
     }
     
     public static void main(String[] args) {

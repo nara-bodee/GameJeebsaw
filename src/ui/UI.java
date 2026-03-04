@@ -3,20 +3,18 @@ package ui;
 import core.GameSettings;
 import java.awt.*;
 import java.awt.event.*;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.*;
-
 import main.GameWindow;
+import online.ClientSessionManager;
 import online.LanDiscovery;
 import online.OnlineClient;
 import online.OnlineRoomInfo;
-import online.ClientSessionManager;
-import online.SessionInfo;
 import online.OnlineServer;
+import online.SessionInfo;
 
 public class UI extends JFrame {
     private static final String[] FONT_CANDIDATES = {
@@ -38,9 +36,10 @@ public class UI extends JFrame {
 
     private JTextArea dialogueText;
     private final Runnable onStartGame;
+    private final boolean onlineOnlyMode;
 
     public UI() {
-        this(null);
+        this(null, true, false);
     }
 
     public static Font uiFont(int style, int size) {
@@ -71,8 +70,13 @@ public class UI extends JFrame {
     }
 
     public UI(Runnable onStartGame) {
+        this(onStartGame, true, false);
+    }
+
+    public UI(Runnable onStartGame, boolean showWindow, boolean onlineOnlyMode) {
         applyUiFonts();
         this.onStartGame = onStartGame;
+        this.onlineOnlyMode = onlineOnlyMode;
         GameSettings settings = GameSettings.getInstance();
         int currentWidth = settings.getScreenWidth();
         int currentHeight = settings.getScreenHeight();
@@ -102,7 +106,21 @@ public class UI extends JFrame {
         applyScale(getContentPane().getWidth(), getContentPane().getHeight());
 
         setLocationRelativeTo(null);
-        setVisible(true);
+        if (showWindow) {
+            setVisible(true);
+        }
+    }
+
+    private void showUiFrameIfNeeded() {
+        if (!onlineOnlyMode) {
+            UI.this.setVisible(true);
+        }
+    }
+
+    private void hideUiFrameIfNeeded() {
+        if (!onlineOnlyMode) {
+            UI.this.setVisible(false);
+        }
     }
 
     private void changeScreenSize(int newWidth, int newHeight) {
@@ -255,6 +273,10 @@ public class UI extends JFrame {
         }
     }
 
+    public void openOnlineMenu() {
+        showOnlineMenu();
+    }
+
     // 🔥 วาดหน้าจอหลอด LED และรายชื่อผู้เล่น
     private void updatePlayerDisplay(JTextPane playersArea, List<String> players, Map<String, Boolean> readyMap) {
         StringBuilder html = new StringBuilder("<html><body style='padding: 5px; margin: 0;'>");
@@ -381,7 +403,7 @@ public void onStateSync(String state) {
             @Override 
 public void onStartGame() {
     lobby.setVisible(false);
-    UI.this.setVisible(false);
+    hideUiFrameIfNeeded();
     
     // 🌟 ใส่ Runnable สำหรับปุ่ม Reconnect ลงไป
     activeGame[0] = new GameWindow(assignedName[0], score -> {
@@ -390,7 +412,7 @@ public void onStartGame() {
             activeGame[0].dispose();
             activeGame[0] = null;
         }
-        UI.this.setVisible(true);
+        showUiFrameIfNeeded();
         lobby.setVisible(true);
     }, () -> {
         // โค้ดนี้จะทำงานเมื่อผู้เล่นกดปุ่ม Reconnect ใน GameWindow
@@ -418,7 +440,7 @@ public void onStartGame() {
                     activeGame[0].dispose();
                 }
                 JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
-                UI.this.setVisible(true);
+                showUiFrameIfNeeded();
                 lobby.setVisible(true);
                 
                 readyBtn.setText("Ready");
@@ -432,7 +454,7 @@ public void onStartGame() {
                     ClientSessionManager.clearSession();
                     JOptionPane.showMessageDialog(UI.this, "ไม่สามารถเชื่อมต่อใหม่ได้: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
                     lobby.dispose();
-                    UI.this.setVisible(true);
+                    showUiFrameIfNeeded();
                     return;
                 }
                 JOptionPane.showMessageDialog(UI.this, "Error: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
@@ -448,7 +470,7 @@ public void onDisconnected() {
         // ถ้ายังอยู่ที่หน้า Lobby ค่อยเตะกลับไปเมนูหลัก
         lobby.dispose();
         JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
-        UI.this.setVisible(true);
+        showUiFrameIfNeeded();
     }
 }
 
@@ -472,7 +494,7 @@ public void onDisconnected() {
             ClientSessionManager.clearSession();
             client.disconnect();
             lobby.dispose();
-            UI.this.setVisible(true); 
+            showUiFrameIfNeeded(); 
         });
 
         lobby.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -481,7 +503,7 @@ public void onDisconnected() {
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 client.disconnect();
                 lobby.dispose();
-                UI.this.setVisible(true);
+                showUiFrameIfNeeded();
             }
         });
 
@@ -597,7 +619,7 @@ public void onDisconnected() {
                 @Override 
                 public void onStartGame() {
                     lobby.setVisible(false); 
-                    UI.this.setVisible(false); 
+                    hideUiFrameIfNeeded(); 
                     
                     activeGame[0] = new GameWindow(playerName, score -> {
                         hostClient.sendScore(score);
@@ -605,7 +627,7 @@ public void onDisconnected() {
                             activeGame[0].dispose();
                             activeGame[0] = null;
                         }
-                        UI.this.setVisible(true);
+                        showUiFrameIfNeeded();
                         lobby.setVisible(true);
                     }, null);
                     activeGame[0].setVisible(true);
@@ -617,7 +639,7 @@ public void onDisconnected() {
                         activeGame[0].dispose();
                     }
                     JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
-                    UI.this.setVisible(true);
+                    showUiFrameIfNeeded();
                     lobby.setVisible(true);
                     
                     readyBtn.setText("Ready");
@@ -651,7 +673,7 @@ public void onDisconnected() {
                 server.stop();
                 hostClient.disconnect();
                 lobby.dispose();
-                UI.this.setVisible(true); 
+                showUiFrameIfNeeded(); 
             });
 
             lobby.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -661,7 +683,7 @@ public void onDisconnected() {
                     server.stop();
                     hostClient.disconnect();
                     lobby.dispose();
-                    UI.this.setVisible(true);
+                    showUiFrameIfNeeded();
                 }
             });
 
