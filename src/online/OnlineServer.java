@@ -9,10 +9,10 @@ import javax.swing.SwingUtilities;
 
 public class OnlineServer {
     // =========================
-// Turn System
-// =========================
-private final List<String> turnOrder = new ArrayList<>();
-private int currentTurnIndex = 0;
+    // Turn System
+    // =========================
+    private final List<String> turnOrder = new ArrayList<>();
+    private int currentTurnIndex = 0;
 
     public interface ServerListener {
         void onPlayerListChanged(List<String> players);
@@ -30,6 +30,7 @@ private int currentTurnIndex = 0;
     private final List<ClientSession> sessions = new CopyOnWriteArrayList<>();
 
     private ServerSocket serverSocket;
+    private DatagramSocket discoverySocket;
     private volatile boolean running;
     private volatile boolean gameStarted;
     private volatile boolean scoreboardSent;
@@ -38,16 +39,16 @@ private int currentTurnIndex = 0;
     private ServerListener listener;
 
     // =========================
-    // Constructor (เหมือนของเดิม)
+    // Constructor
     // =========================
     public OnlineServer(String roomName, String hostName, int maxPlayers) {
-    this.roomName = sanitize(roomName);
-    this.hostName = sanitize(hostName);
-    this.maxPlayers = maxPlayers;
-}
+        this.roomName = sanitize(roomName);
+        this.hostName = sanitize(hostName);
+        this.maxPlayers = maxPlayers;
+    }
 
     // =========================
-    // Public API (ต้องมี)
+    // Public API
     // =========================
 
     public void setListener(ServerListener listener) {
@@ -58,12 +59,13 @@ private int currentTurnIndex = 0;
         serverSocket = new ServerSocket(0);
         running = true;
         startAcceptLoop();
+        startDiscoveryLoop();
         startCleanupLoop();
         notifyPlayerList();
     }
 
     public int getPort() {
-        return serverSocket.getLocalPort();
+        return serverSocket != null ? serverSocket.getLocalPort() : -1;
     }
 
     public String getRoomName() {
@@ -71,51 +73,48 @@ private int currentTurnIndex = 0;
     }
 
     public synchronized void startGame() {
-    if (gameStarted) return;
+        if (gameStarted) return;
 
-    gameStarted = true;
-    expectedPlayersAtStart = playersByToken.size();
+        gameStarted = true;
+        expectedPlayersAtStart = playersByToken.size();
         for (PlayerSlot p : playersByToken.values()) {
             p.score = 0;
             p.scoreSubmitted = false;
         }
-    currentTurnIndex = 0;
-    broadcast("START");
-    broadcastCurrentTurn();
-}
-private void broadcastCurrentTurn() {
-    if (turnOrder.isEmpty()) return;
-
-    String token = turnOrder.get(currentTurnIndex);
-    PlayerSlot p = playersByToken.get(token);
-
-    if (p != null) {
-        broadcast("CURRENT_TURN|" + p.name);
+        currentTurnIndex = 0;
+        broadcast("START");
+        broadcastCurrentTurn();
     }
-}
-private synchronized void nextTurn() {
 
-    if (turnOrder.isEmpty()) return;
+    private void broadcastCurrentTurn() {
+        if (turnOrder.isEmpty()) return;
 
-    int attempts = 0;
-
-    do {
-        currentTurnIndex = (currentTurnIndex + 1) % turnOrder.size();
         String token = turnOrder.get(currentTurnIndex);
         PlayerSlot p = playersByToken.get(token);
 
-        if (p != null && p.connected) {
-            broadcastCurrentTurn();
-            return;
+        if (p != null) {
+            broadcast("CURRENT_TURN|" + p.name);
         }
+    }
 
-        attempts++;
+    private synchronized void nextTurn() {
+        if (turnOrder.isEmpty()) return;
 
-    } while (attempts < turnOrder.size());
+        int attempts = 0;
+        do {
+            currentTurnIndex = (currentTurnIndex + 1) % turnOrder.size();
+            String token = turnOrder.get(currentTurnIndex);
+            PlayerSlot p = playersByToken.get(token);
 
-    // ถ้าทุกคน disconnected
-    System.out.println("No active players.");
-}
+            if (p != null && p.connected) {
+                broadcastCurrentTurn();
+                return;
+            }
+            attempts++;
+        } while (attempts < turnOrder.size());
+
+        System.out.println("No active players.");
+    }
 
     public synchronized void submitHostScore(int score) {
         PlayerSlot host = playersByToken.get("HOST");
@@ -127,8 +126,10 @@ private synchronized void nextTurn() {
 
     public synchronized void stop() {
         running = false;
-        try { serverSocket.close(); } catch (Exception ignored) {}
+        try { if (serverSocket != null) serverSocket.close(); } catch (Exception ignored) {}
+        try { if (discoverySocket != null) discoverySocket.close(); } catch (Exception ignored) {}
         for (ClientSession s : sessions) s.close();
+        sessions.clear();
     }
 
     // =========================
@@ -149,11 +150,11 @@ private synchronized void nextTurn() {
     }
 
     // =========================
-    // Accept Loop
+    // Network Loops
     // =========================
 
     private void startAcceptLoop() {
-        new Thread(() -> {
+        Thread acceptThread = new Thread(() -> {
             while (running) {
                 try {
                     Socket socket = serverSocket.accept();
@@ -162,43 +163,75 @@ private synchronized void nextTurn() {
                     session.start();
                 } catch (IOException ignored) {}
             }
-        }).start();
+        }, "OnlineServer-Accept");
+        acceptThread.setDaemon(true);
+        acceptThread.start();
     }
 
-    // =========================
-    // Cleanup Loop
-    // =========================
+    private void startDiscoveryLoop() {
+        Thread discoveryThread = new Thread(() -> {
+            try {
+                discoverySocket = new DatagramSocket(LanDiscovery.DISCOVERY_PORT);
+                discoverySocket.setBroadcast(true);
+                byte[] buffer = new byte[256];
+
+                while (running) {
+                    DatagramPacket request = new DatagramPacket(buffer, buffer.length);
+                    discoverySocket.receive(request);
+
+                    String message = new String(request.getData(), 0, request.getLength(), StandardCharsets.UTF_8);
+                    if (!"GJ_DISCOVER".equals(message)) {
+                        continue;
+                    }
+
+                    long activePlayersCount = playersByToken.values().stream().filter(p -> p.connected).count();
+                    String responseText = "GJ_ROOM|" + roomName + "|" + getPort() + "|" + activePlayersCount + "|" + maxPlayers + "|" + hostName;
+                    
+                    byte[] responseData = responseText.getBytes(StandardCharsets.UTF_8);
+                    DatagramPacket response = new DatagramPacket(
+                        responseData, responseData.length,
+                        request.getAddress(), request.getPort()
+                    );
+                    discoverySocket.send(response);
+                }
+            } catch (IOException ignored) {
+            }
+        }, "OnlineServer-Discovery");
+        discoveryThread.setDaemon(true);
+        discoveryThread.start();
+    }
 
     private void startCleanupLoop() {
-        new Thread(() -> {
+        Thread cleanupThread = new Thread(() -> {
             while (running) {
                 synchronized (this) {
                     long now = System.currentTimeMillis();
                     Iterator<PlayerSlot> it = playersByToken.values().iterator();
-while (it.hasNext()) {
-                    PlayerSlot p = it.next();
-                    if (!p.connected &&
-                        now - p.disconnectTime > GRACE_PERIOD_MS &&
-                        !"HOST".equals(p.token)) {
+                    while (it.hasNext()) {
+                        PlayerSlot p = it.next();
+                        if (!p.connected &&
+                            now - p.disconnectTime > GRACE_PERIOD_MS &&
+                            !"HOST".equals(p.token)) {
 
-                        turnOrder.remove(p.token);
+                            turnOrder.remove(p.token);
 
-                        if (currentTurnIndex >= turnOrder.size()) {
-                            currentTurnIndex = 0;
+                            if (currentTurnIndex >= turnOrder.size()) {
+                                currentTurnIndex = 0;
+                            }
+
+                            broadcast("PLAYER_REMOVED|" + p.name);
+                            it.remove();
+                            
+                            if (gameStarted) expectedPlayersAtStart--;
+                            checkScoreboard(); 
                         }
-
-                        broadcast("PLAYER_REMOVED|" + p.name);
-                        it.remove();
-                        
-                        // 🔥 เพิ่ม 2 บรรทัดนี้: ถ้าเกมเริ่มแล้วมีคนหลุดถาวร ให้ลดยอดคนที่ต้องรอคะแนน และเช็คคะแนนอีกรอบ
-                        if (gameStarted) expectedPlayersAtStart--;
-                        checkScoreboard(); 
                     }
-                }
                 }
                 try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
             }
-        }).start();
+        }, "OnlineServer-Cleanup");
+        cleanupThread.setDaemon(true);
+        cleanupThread.start();
     }
 
     // =========================
@@ -206,7 +239,6 @@ while (it.hasNext()) {
     // =========================
 
     private class ClientSession {
-
         private final Socket socket;
         private BufferedReader reader;
         private PrintWriter writer;
@@ -217,7 +249,9 @@ while (it.hasNext()) {
         }
 
         void start() {
-            new Thread(this::run).start();
+            Thread thread = new Thread(this::run, "OnlineServer-ClientSession");
+            thread.setDaemon(true);
+            thread.start();
         }
 
         void run() {
@@ -240,97 +274,92 @@ while (it.hasNext()) {
                 }
 
                 String line;
-                while ((line = reader.readLine()) != null) {
-
-    if (line.startsWith("SCORE|")) {
-
-        int score = Integer.parseInt(line.substring(6));
-        synchronized (OnlineServer.this) {
-            slot.score = score;
-slot.scoreSubmitted = true;
-checkScoreboard();
-        }
-    }
-
-    else if (line.equals("READY")) {
-
-        synchronized (OnlineServer.this) {
-            slot.ready = true;
-            broadcastReadyStatus();
-            checkAllReady();
-        }
-    }
-
-    else if (line.equals("UNREADY")) {
-
-        synchronized (OnlineServer.this) {
-            slot.ready = false;
-            broadcastReadyStatus();
-        }
-    }
-
-    else if (line.equals("START_REQUEST")) {
-
-        synchronized (OnlineServer.this) {
-
-            if (!slot.isHost) {
-                send("ERROR|Only host can start");
-                continue;
-            }
-
-            if (!areAllReady()) {
-                send("ERROR|Not everyone ready");
-                continue;
-            }
-
-            startGame();
-        }
-    }
-}
-
+                while (running && (line = reader.readLine()) != null) {
+                    if (line.startsWith("SCORE|")) {
+                        int score = Integer.parseInt(line.substring(6));
+                        synchronized (OnlineServer.this) {
+                            slot.score = score;
+                            slot.scoreSubmitted = true;
+                            checkScoreboard();
+                        }
+                    }
+                    else if (line.equals("READY")) {
+                        synchronized (OnlineServer.this) {
+                            slot.ready = true;
+                            broadcastReadyStatus();
+                            checkAllReady();
+                        }
+                    }
+                    else if (line.equals("UNREADY")) {
+                        synchronized (OnlineServer.this) {
+                            slot.ready = false;
+                            broadcastReadyStatus();
+                        }
+                    }
+                    else if (line.equals("START_REQUEST")) {
+                        synchronized (OnlineServer.this) {
+                            if (!slot.isHost) {
+                                send("ERROR|Only host can start");
+                                continue;
+                            }
+                            if (!areAllReady()) {
+                                send("ERROR|Not everyone ready");
+                                continue;
+                            }
+                            startGame();
+                        }
+                    }
+                    else if (line.equals("QUIT")) {
+                        break;
+                    }
+                }
             } catch (IOException ignored) {
             } finally {
                 handleDisconnect();
                 close();
+                sessions.remove(this);
             }
         }
 
         void handleHello(String name) {
-            
-    synchronized (OnlineServer.this) {
+            synchronized (OnlineServer.this) {
+                if (gameStarted) {
+                    send("ERROR|Game has already started");
+                    return;
+                }
 
-        if (playersByToken.size() >= maxPlayers) {
-            send("ERROR|Room full");
-            return;
+                if (playersByToken.size() >= maxPlayers) {
+                    send("ERROR|Room full");
+                    return;
+                }
+
+                PlayerSlot ps = new PlayerSlot();
+                ps.playerId = UUID.randomUUID().toString();
+                ps.token = UUID.randomUUID().toString();
+                ps.name = uniqueName(sanitize(name));
+                ps.connected = true;
+                ps.session = this;
+                ps.ready = false;
+                turnOrder.add(ps.token);
+
+                if (playersByToken.isEmpty()) {
+                    ps.isHost = true;
+                    send("ROLE|HOST");
+                } else {
+                    ps.isHost = false;
+                    send("ROLE|PLAYER");
+                }
+
+                playersByToken.put(ps.token, ps);
+                this.slot = ps;
+
+                send("WELCOME|" + ps.playerId + "|" + ps.token + "|" +
+                        roomName + "|" + maxPlayers + "|" + playersByToken.size());
+
+                broadcastPlayerList();
+                broadcastReadyStatus();
+            }
         }
-
-        PlayerSlot ps = new PlayerSlot();
-        ps.playerId = UUID.randomUUID().toString();
-        ps.token = UUID.randomUUID().toString();
-        ps.name = uniqueName(sanitize(name));
-        ps.connected = true;
-        ps.session = this;
-        ps.ready = false;
-        turnOrder.add(ps.token);
-
-        if (playersByToken.isEmpty()) {
-            ps.isHost = true;
-            send("ROLE|HOST");
-        } else {
-            ps.isHost = false;
-            send("ROLE|PLAYER");
-        }
-
-        playersByToken.put(ps.token, ps);
-        this.slot = ps;
-
-        send("WELCOME|" + ps.playerId + "|" + ps.token + "|" +
-                roomName + "|" + maxPlayers + "|" + playersByToken.size());
-
-        broadcastPlayerList();
-        broadcastReadyStatus();
-    }
-}
 
         void handleReconnect(String token) {
             synchronized (OnlineServer.this) {
@@ -348,13 +377,10 @@ checkScoreboard();
             }
             broadcastCurrentTurn();
             broadcastReadyStatus();
-            
-            // 🔥 เพิ่มบรรทัดนี้ เพื่อให้ทุกคนในห้องเห็นว่าชื่อคนนี้ไม่ได้ (DC) แล้ว
             broadcastPlayerList(); 
         }
-        
 
-       void handleDisconnect() {
+        void handleDisconnect() {
             synchronized (OnlineServer.this) {
                 if (slot != null) {
                     slot.connected = false;
@@ -370,26 +396,22 @@ checkScoreboard();
                         }
                     }
 
-                    // 🔥 เพิ่มส่วนนี้: ถ้าเกมยังไม่เริ่ม และไม่ใช่โฮสต์ ให้ลบรายชื่อออกทันทีไม่ต้องรอ
                     if (!gameStarted && !slot.isHost) {
                         playersByToken.remove(slot.token);
                         turnOrder.remove(slot.token);
                         
-                        // ถ้ารอบปัจจุบันชี้ไปที่คนที่เพิ่งออกพอดี (และลบออกไปแล้ว) ให้รีเซ็ต index
                         if (currentTurnIndex >= turnOrder.size()) {
                             currentTurnIndex = 0;
                         }
                     }
 
-                    // 🔥 สั่งอัปเดตรายชื่อผู้เล่นและสถานะไปยังทุกคนในห้องทันที
                     broadcastPlayerList();
                     broadcastReadyStatus();
-                    checkAllReady(); // เช็คอีกรอบ เผื่อคนที่เหลืออยู่กด Ready ครบหมดแล้ว
+                    checkAllReady(); 
                     if (gameStarted) {
                         checkScoreboard();
                     }
                 }
-                
             }
         }
 
@@ -406,23 +428,17 @@ checkScoreboard();
     // Scoreboard
     // =========================
 
-    // ในไฟล์ OnlineServer.java
     private void checkScoreboard() {
         if (!gameStarted || scoreboardSent) return;
 
-        // 1. นับจำนวนคนที่ "ยังอยู่ในห้องจริงๆ" ตอนนี้
         long activePlayers = playersByToken.values().stream()
             .filter(p -> p.connected)
             .count();
 
-        // 2. นับจำนวนคนที่ "ส่งคะแนนมาแล้ว"
         long submitted = playersByToken.values().stream()
             .filter(p -> p.scoreSubmitted)
             .count();
 
-        // 🔥 3. เงื่อนไขสรุปผล: 
-        // ถ้าคนที่ส่งคะแนนมา มีจำนวนเท่ากับหรือมากกว่า คนที่ยังอยู่ในห้อง
-        // แปลว่าคนที่หลุด ไม่ต้องรอแล้ว สรุปผลได้เลย!
         if (submitted >= expectedPlayersAtStart || (activePlayers > 0 && submitted >= activePlayers)) {
             scoreboardSent = true;
             String board = buildScoreboard();
@@ -433,7 +449,6 @@ checkScoreboard();
                         listener.onScoreboardReady(board));
             }
             
-            // รีเซ็ตสถานะห้องกลับเป็นปกติ เพื่อให้เริ่มเล่นรอบใหม่ได้
             gameStarted = false;
             scoreboardSent = false;
             for (PlayerSlot p : playersByToken.values()) {
@@ -510,60 +525,62 @@ checkScoreboard();
     }
 
     private static String sanitize(String text) {
-    if (text == null || text.trim().isEmpty()) return "Player";
-    return text.trim().replace("|", "_").replace(",", "_");
-}
+        if (text == null || text.trim().isEmpty()) return "Player";
+        return text.trim().replace("|", "_").replace(",", "_").replace(";", "_").replace(":", "_");
+    }
+
     // =========================
-// State Sync (Reconnect)
-// =========================
-private String buildStateSync() {
-    StringBuilder sb = new StringBuilder();
-
-    sb.append("ROOM=").append(roomName).append(";");
-    sb.append("GAME_STARTED=").append(gameStarted).append(";");
-    sb.append("PLAYERS=");
-
-    List<String> list = new ArrayList<>();
-    for (PlayerSlot p : playersByToken.values()) {
-        list.add(p.name + ":" +
-         p.score + ":" +
-         (p.connected ? "1" : "0") + ":" +
-         (p.ready ? "1" : "0"));
-    }
-
-    sb.append(String.join(",", list));
-sb.append(";CURRENT_TURN=");
-
-if (!turnOrder.isEmpty()) {
-    String token = turnOrder.get(currentTurnIndex);
-    PlayerSlot p = playersByToken.get(token);
-    if (p != null) {
-        sb.append(p.name);
-    }
-}
-    return sb.toString();
+    // State Sync (Reconnect)
+    // =========================
     
-}
-public synchronized boolean areAllReady() {
-    if (playersByToken.isEmpty()) return false;
+    private String buildStateSync() {
+        StringBuilder sb = new StringBuilder();
 
-    for (PlayerSlot p : playersByToken.values()) {
-        if (!p.ready) return false;
-    }
-    return true;
-}
+        sb.append("ROOM=").append(roomName).append(";");
+        sb.append("GAME_STARTED=").append(gameStarted).append(";");
+        sb.append("PLAYERS=");
 
-private void checkAllReady() {
-    if (areAllReady()) {
-        broadcast("ALL_READY");
-    }
-}
+        List<String> list = new ArrayList<>();
+        for (PlayerSlot p : playersByToken.values()) {
+            list.add(p.name + ":" +
+             p.score + ":" +
+             (p.connected ? "1" : "0") + ":" +
+             (p.ready ? "1" : "0"));
+        }
 
-private void broadcastReadyStatus() {
-    List<String> list = new ArrayList<>();
-    for (PlayerSlot p : playersByToken.values()) {
-        list.add(p.name + ":" + p.ready);
+        sb.append(String.join(",", list));
+        sb.append(";CURRENT_TURN=");
+
+        if (!turnOrder.isEmpty()) {
+            String token = turnOrder.get(currentTurnIndex);
+            PlayerSlot p = playersByToken.get(token);
+            if (p != null) {
+                sb.append(p.name);
+            }
+        }
+        return sb.toString();
     }
-    broadcast("READY_STATUS|" + String.join(",", list));
-}
+
+    public synchronized boolean areAllReady() {
+        if (playersByToken.isEmpty()) return false;
+
+        for (PlayerSlot p : playersByToken.values()) {
+            if (!p.ready) return false;
+        }
+        return true;
+    }
+
+    private void checkAllReady() {
+        if (areAllReady()) {
+            broadcast("ALL_READY");
+        }
+    }
+
+    private void broadcastReadyStatus() {
+        List<String> list = new ArrayList<>();
+        for (PlayerSlot p : playersByToken.values()) {
+            list.add(p.name + ":" + p.ready);
+        }
+        broadcast("READY_STATUS|" + String.join(",", list));
+    }
 }

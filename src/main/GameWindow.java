@@ -42,10 +42,14 @@ public class GameWindow extends JFrame {
     private JPanel choicePanel; 
     private JButton nextDayButton; 
     private GameEvent activeEvent = null;
+    
+    // สำหรับระบบ Multiplayer Reconnect
+    private JButton reconnectButton; 
     private int eventStep = 0;
     private final IntConsumer onFinalScore;
     private final String playerDisplayName;
     private boolean finalScoreSent = false;
+    private final Runnable onReconnectAttempt; 
     
     // ตัวแปรสำหรับ save game
     private static final int MAX_SAVE_SLOTS = 5;
@@ -73,12 +77,13 @@ public class GameWindow extends JFrame {
     }
 
     public GameWindow() {
-        this("Player", null);
+        this("Player", null, null);
     }
 
-    public GameWindow(String playerDisplayName, IntConsumer onFinalScore) {
+    public GameWindow(String playerDisplayName, IntConsumer onFinalScore, Runnable onReconnectAttempt) {
         this.playerDisplayName = (playerDisplayName == null || playerDisplayName.trim().isEmpty()) ? "Player" : playerDisplayName.trim();
         this.onFinalScore = onFinalScore;
+        this.onReconnectAttempt = onReconnectAttempt;
 
         // ตั้งค่า font ให้ JOptionPane และ dialog ทั้งหมด
         applyUiFonts();
@@ -216,7 +221,21 @@ public class GameWindow extends JFrame {
         nextDayButton = new JButton("เริ่มเกม");
         nextDayButton.setFont(buttonFont); 
         nextDayButton.addActionListener(e -> advanceDay());
-        controlPanel.add(nextDayButton);
+
+        // Reconnect button for multiplayer, initially hidden
+        reconnectButton = new JButton("Reconnect");
+        reconnectButton.setFont(buttonFont);
+        reconnectButton.setVisible(false);
+        reconnectButton.addActionListener(e -> {
+            if (this.onReconnectAttempt != null) {
+                reconnectButton.setText("Reconnecting...");
+                reconnectButton.setEnabled(false);
+                this.onReconnectAttempt.run();
+            }
+        });
+
+        controlPanel.add(reconnectButton);
+        controlPanel.add(nextDayButton); // Add original button
         bottomPanel.add(controlPanel, BorderLayout.EAST);
 
         mainScene.add(bottomPanel, BorderLayout.SOUTH);
@@ -224,6 +243,28 @@ public class GameWindow extends JFrame {
         add(mainScene);
         setSize(800, 600); // กำหนดขนาดเริ่มต้น
         setLocationRelativeTo(null);
+    }
+
+    /**
+     * Toggles the UI to show a "Reconnect" button when connection is lost.
+     * This is intended for multiplayer mode.
+     * @param isDisconnected true to show reconnect UI, false to show normal game UI.
+     */
+    public void setConnectionState(boolean isDisconnected) {
+        if (isDisconnected) {
+            dialogText.setText("<html><font color='red'>Connection Lost!</font><br>Please reconnect to continue the game.</html>");
+            reconnectButton.setVisible(true);
+            reconnectButton.setText("Reconnect");
+            reconnectButton.setEnabled(true);
+            nextDayButton.setVisible(false); // Hide normal game progression
+            choicePanel.setVisible(false); // Hide choices
+        } else {
+            // On successful reconnect, the server will send a new state, which will update the UI.
+            reconnectButton.setVisible(false);
+            nextDayButton.setVisible(true);
+            choicePanel.setVisible(true);
+        }
+        repaint();
     }
 
     // แสดง Menu Dialog
@@ -282,14 +323,13 @@ public class GameWindow extends JFrame {
             showSettingsDialog();
         });
 
-        // 🔥 ปุ่ม Exit (แก้ไขให้มี Popup ถามยืนยัน และแยกโหมดออนไลน์/ออฟไลน์ชัดเจน)
+        // 🔥 ปุ่ม Exit
         JButton exitBtn = new JButton("Exit");
         exitBtn.setFont(menuFont);
         exitBtn.setBackground(new Color(255, 100, 100));
         exitBtn.setForeground(Color.WHITE);
         exitBtn.setFocusPainted(false);
         exitBtn.addActionListener(e -> {
-            
             int confirm = JOptionPane.showConfirmDialog(menuDialog, 
                     "คุณต้องการออกจากเกมนี้ใช่หรือไม่?\n(หากเล่นโหมดออนไลน์ คะแนนจะถูกส่งทันที)", 
                     "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
@@ -529,7 +569,7 @@ public class GameWindow extends JFrame {
     }
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new UI(() -> new GameWindow().setVisible(true));
+            new UI(() -> new GameWindow().setVisible(true)); // In a real scenario, this would launch the lobby first.
         });
     }
 
@@ -723,5 +763,4 @@ public class GameWindow extends JFrame {
             "New Game",
             JOptionPane.INFORMATION_MESSAGE);
     }
-    
 }
