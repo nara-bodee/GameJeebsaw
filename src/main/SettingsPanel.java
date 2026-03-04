@@ -1,49 +1,51 @@
 package main;
 
+import core.GameSettings;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.*;
 
-public class MenuPanel extends JPanel {
+public class SettingsPanel extends JPanel {
     
     private MainFrame mainFrame;
     private ImageIcon bgImage = new ImageIcon("ui/bg.jpg");
     
-    public MenuPanel(MainFrame mainFrame) {
+    public SettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         setLayout(null);
         setPreferredSize(new Dimension(1280, 720));
         
-        // ปุ่ม Single Player
-        JButton newGameBtn = createStyledButton("Single Player", 200, 280, 
+        // ปุ่ม Resolution 1920x1080
+        JButton res1Btn = createStyledButton("1920 x 1080", 200, 280,
             new Color(100, 200, 100), new Color(130, 230, 130));
-        newGameBtn.addActionListener(e -> mainFrame.startNewGame());
-        add(newGameBtn);
+        res1Btn.addActionListener(e -> changeResolution(1920, 1080));
+        add(res1Btn);
         
-        // ปุ่ม Load Game
-        JButton loadGameBtn = createStyledButton("Load Game", 200, 360,
+        // ปุ่ม Resolution 1280x720
+        JButton res2Btn = createStyledButton("1280 x 720", 200, 360,
             new Color(150, 180, 200), new Color(180, 210, 230));
-        loadGameBtn.addActionListener(e -> mainFrame.showLoadGame());
-        add(loadGameBtn);
+        res2Btn.addActionListener(e -> changeResolution(1280, 720));
+        add(res2Btn);
 
-        // ปุ่ม Multiplayer
-        JButton multiplayerBtn = createStyledButton("Multiplayer", 200, 440,
-            new Color(180, 120, 255), new Color(210, 150, 255));
-        multiplayerBtn.addActionListener(e -> mainFrame.openMultiplayer());
-        add(multiplayerBtn);
-
-        // ปุ่ม Settings
-        JButton settingsBtn = createStyledButton("Settings", 200, 520,
-            new Color(255, 180, 100), new Color(255, 210, 130));
-        settingsBtn.addActionListener(e -> mainFrame.showSettings());
-        add(settingsBtn);
+        // ปุ่ม Resolution 960x540
+        JButton res3Btn = createStyledButton("960 x 540", 200, 440,
+            new Color(200, 150, 200), new Color(230, 180, 230));
+        res3Btn.addActionListener(e -> changeResolution(960, 540));
+        add(res3Btn);
         
-        // ปุ่ม Exit
-        JButton exitBtn = createStyledButton("Exit", 200, 600,
-            new Color(255, 120, 160), new Color(255, 150, 180));
-        exitBtn.addActionListener(e -> System.exit(0));
-        add(exitBtn);
+        // ปุ่ม Back to Menu
+        JButton backBtn = createStyledButton("Back to Menu", 200, 520,
+            new Color(255, 180, 100), new Color(255, 210, 130));
+        backBtn.addActionListener(e -> mainFrame.showMenu());
+        add(backBtn);
+        
+        // Title
+        JLabel titleLabel = new JLabel("Display Settings");
+        titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setBounds(400, 150, 480, 60);
+        add(titleLabel);
     }
     
     @Override
@@ -57,6 +59,12 @@ public class MenuPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setColor(new Color(20, 30, 70, 180));
         g2.fillRect(0, 0, getWidth(), getHeight());
+    }
+    
+    private void changeResolution(int width, int height) {
+        GameSettings.getInstance().applyResolution(width, height, false);
+        mainFrame.updateWindowSize();
+        JOptionPane.showMessageDialog(this, "Resolution changed to " + width + " x " + height);
     }
     
     private JButton createStyledButton(String text, int x, int y, Color normal, Color hover) {

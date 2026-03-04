@@ -129,6 +129,10 @@ public class UI extends JFrame {
         }
     }
 
+    public JFrame getMainFrameParent() {
+        return mainFrameParent;
+    }
+
     private void changeScreenSize(int newWidth, int newHeight) {
         GameSettings.getInstance().applyResolution(newWidth, newHeight, false);
         getContentPane().setPreferredSize(new Dimension(newWidth, newHeight));
@@ -235,10 +239,14 @@ public class UI extends JFrame {
     }
 
     private void showOnlineMenu() {
+        showOnlineMenu(mainFrameParent != null ? mainFrameParent : this);
+    }
+
+    private void showOnlineMenu(JFrame parentFrame) {
         SessionInfo lastSession = ClientSessionManager.loadSession();
         if (lastSession != null) {
             int choice = JOptionPane.showConfirmDialog(
-                this,
+                parentFrame,
                 "พบเกมที่ยังไม่จบในห้อง '" + lastSession.roomName() + "'\nคุณต้องการเชื่อมต่อใหม่หรือไม่?",
                 "เชื่อมต่อใหม่",
                 JOptionPane.YES_NO_OPTION,
@@ -246,21 +254,21 @@ public class UI extends JFrame {
             );
 
             if (choice == JOptionPane.YES_OPTION) {
-                attemptReconnect(lastSession);
+                attemptReconnect(lastSession, parentFrame);
                 return;
             } else {
                 ClientSessionManager.clearSession();
             }
         }
 
-        String playerName = JOptionPane.showInputDialog(this, "ใส่ชื่อผู้เล่น:", "Online LAN", JOptionPane.PLAIN_MESSAGE);
+        String playerName = JOptionPane.showInputDialog(parentFrame, "ใส่ชื่อผู้เล่น:", "Online LAN", JOptionPane.PLAIN_MESSAGE);
         if (playerName == null) return;
         playerName = playerName.trim();
         if (playerName.isEmpty()) playerName = "Player";
 
         Object[] options = {"สร้างห้อง (Host)", "เข้าห้อง (Join)", "ยกเลิก"};
         int selected = JOptionPane.showOptionDialog(
-            this,
+            parentFrame,
             "เลือกโหมดออนไลน์",
             "Online LAN",
             JOptionPane.DEFAULT_OPTION,
@@ -273,14 +281,14 @@ public class UI extends JFrame {
         if (selected < 0 || options[selected].equals("ยกเลิก")) return;
 
         if (options[selected].equals("สร้างห้อง (Host)")) {
-            startHostLobby(playerName);
+            startHostLobby(playerName, parentFrame);
         } else if (options[selected].equals("เข้าห้อง (Join)")) {
-            startJoinLobby(playerName);
+            startJoinLobby(playerName, parentFrame);
         }
     }
 
     public void openOnlineMenu() {
-        showOnlineMenu();
+        showOnlineMenu(mainFrameParent != null ? mainFrameParent : this);
     }
 
     // 🔥 วาดหน้าจอหลอด LED และรายชื่อผู้เล่น
@@ -306,24 +314,24 @@ public class UI extends JFrame {
         playersArea.setText(html.toString());
     }
 
-    private void attemptReconnect(SessionInfo session) {
+    private void attemptReconnect(SessionInfo session, JFrame parentFrame) {
         OnlineRoomInfo dummyRoom = new OnlineRoomInfo(session.roomName(), session.host(), session.port(), 0, 0, "Unknown");
-        startJoinOrReconnectLobby(session.playerName(), dummyRoom, session.token());
+        startJoinOrReconnectLobby(session.playerName(), dummyRoom, session.token(), parentFrame);
     }
 
-    private void startJoinLobby(String playerName) {
-        OnlineRoomInfo selectedRoom = showRoomBrowserDialog();
+    private void startJoinLobby(String playerName, JFrame parentFrame) {
+        OnlineRoomInfo selectedRoom = showRoomBrowserDialog(parentFrame);
         if (selectedRoom == null) return;
-        startJoinOrReconnectLobby(playerName, selectedRoom, null);
+        startJoinOrReconnectLobby(playerName, selectedRoom, null, parentFrame);
     }
 
-    private void startJoinOrReconnectLobby(String playerName, OnlineRoomInfo roomInfo, String reconnectToken) {
+    private void startJoinOrReconnectLobby(String playerName, OnlineRoomInfo roomInfo, String reconnectToken, JFrame parentFrame) {
         String ip = roomInfo.getHostAddress();
         int port = roomInfo.getPort();
 
         OnlineClient client = new OnlineClient(ip, port, playerName);
 
-        JFrame dialogParent = (mainFrameParent != null) ? mainFrameParent : this;
+        JFrame dialogParent = parentFrame != null ? parentFrame : this;
         JDialog lobby = new JDialog(dialogParent, reconnectToken != null ? "Reconnecting..." : "Online Lobby", true);
         lobby.setSize(500, 420);
         lobby.setLocationRelativeTo(dialogParent);
@@ -459,12 +467,12 @@ public void onStartGame() {
             public void onError(String e) {
                 if ("INVALID_TOKEN".equals(e) || e.contains("ไม่สามารถกลับเข้าห้องได้")) {
                     ClientSessionManager.clearSession();
-                    JOptionPane.showMessageDialog(UI.this, "ไม่สามารถเชื่อมต่อใหม่ได้: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(lobby, "ไม่สามารถเชื่อมต่อใหม่ได้: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
                     lobby.dispose();
                     showUiFrameIfNeeded();
                     return;
                 }
-                JOptionPane.showMessageDialog(UI.this, "Error: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(lobby, "Error: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
             }
 
             @Override 
@@ -476,7 +484,7 @@ public void onDisconnected() {
     } else {
         // ถ้ายังอยู่ที่หน้า Lobby ค่อยเตะกลับไปเมนูหลัก
         lobby.dispose();
-        JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
+        JOptionPane.showMessageDialog(lobby, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
         showUiFrameIfNeeded();
     }
 }
@@ -531,7 +539,7 @@ public void onDisconnected() {
         }
     }
 
-    private void startHostLobby(String playerName) {
+    private void startHostLobby(String playerName, JFrame parentFrame) {
         try {
             OnlineServer server = new OnlineServer("Room-1", playerName, 3);
             server.start();
@@ -539,7 +547,7 @@ public void onDisconnected() {
             // ใช้ Localhost เพื่อให้ Host ใช้ระบบ Client เชื่อมตัวเอง (มีปุ่ม Ready)
             OnlineClient hostClient = new OnlineClient("127.0.0.1", server.getPort(), playerName);
 
-            JFrame dialogParent = (mainFrameParent != null) ? mainFrameParent : this;
+            JFrame dialogParent = parentFrame != null ? parentFrame : this;
             JDialog lobby = new JDialog(dialogParent, "Online Room (Host)", true);
             lobby.setSize(500, 420);
             lobby.setLocationRelativeTo(dialogParent);
@@ -669,7 +677,7 @@ public void onDisconnected() {
                 public void onScoreboardReady(String scoreboardText) {}
                 @Override
                 public void onError(String error) {
-                    JOptionPane.showMessageDialog(UI.this, error);
+                    JOptionPane.showMessageDialog(parentFrame, error);
                 }
             });
 
@@ -706,8 +714,8 @@ public void onDisconnected() {
         }
     }
 
-    private OnlineRoomInfo showRoomBrowserDialog() {
-        final JDialog dialog = new JDialog(this, "ค้นหาห้อง", true);
+    private OnlineRoomInfo showRoomBrowserDialog(JFrame parentFrame) {
+        final JDialog dialog = new JDialog(parentFrame, "ค้นหาห้อง", true);
         dialog.setSize(550, 400);
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
@@ -913,36 +921,21 @@ public void onDisconnected() {
         JButton displayScale = purpleButton("Display Scale", 120, 220);
         JButton exit = purpleButton("Exit", 120, 300);
 
-        JButton size1 = purpleButton("1920 x 1080", 120, 60);
-        JButton size2 = purpleButton("1280 x 720", 120, 140);
-        JButton size3 = purpleButton("960 x 540", 120, 220);
-        JButton backBtn = purpleButton("Back", 120, 300);
-
-        size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
-
         JButton close = new JButton("X");
         close.setBounds(440,10,50,50);
         close.setBackground(Color.BLACK); close.setForeground(Color.WHITE); close.setFocusPainted(false);
         close.addActionListener(e -> panel.setVisible(false));
 
         displayScale.addActionListener(e -> {
-            save.setVisible(false); load.setVisible(false); displayScale.setVisible(false); exit.setVisible(false);
-            size1.setVisible(true); size2.setVisible(true); size3.setVisible(true); backBtn.setVisible(true);
+            if (mainFrameParent != null && mainFrameParent instanceof main.MainFrame) {
+                ((main.MainFrame) mainFrameParent).showSettings();
+                panel.setVisible(false);
+            }
         });
-
-        backBtn.addActionListener(e -> {
-            size1.setVisible(false); size2.setVisible(false); size3.setVisible(false); backBtn.setVisible(false);
-            save.setVisible(true); load.setVisible(true); displayScale.setVisible(true); exit.setVisible(true);
-        });
-
-        size1.addActionListener(e -> changeScreenSize(1920, 1080));
-        size2.addActionListener(e -> changeScreenSize(1280, 720));
-        size3.addActionListener(e -> changeScreenSize(960, 540));
         
         exit.addActionListener(e -> System.exit(0));
 
         panel.add(save); panel.add(load); panel.add(displayScale); panel.add(exit);
-        panel.add(size1); panel.add(size2); panel.add(size3); panel.add(backBtn);
         panel.add(close);
 
         return panel;

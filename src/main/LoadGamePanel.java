@@ -1,17 +1,18 @@
 package main;
 
-import save.GameSaveData;
-import save.SaveManager;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.*;
+import save.GameSaveData;
+import save.SaveManager;
 
 public class LoadGamePanel extends JPanel {
     
     private MainFrame mainFrame;
     private ImageIcon bgImage = new ImageIcon("ui/bg.jpg");
     private static final int MAX_SAVE_SLOTS = 5;
+    private int hoveredSlot = -1; // เก็บว่า slot ไหนถูก hover
     
     public LoadGamePanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -34,6 +35,7 @@ public class LoadGamePanel extends JPanel {
         
         // overlay สีเข้ม
         Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(new Color(20, 30, 70, 180));
         g2.fillRect(0, 0, getWidth(), getHeight());
         
@@ -42,24 +44,47 @@ public class LoadGamePanel extends JPanel {
         g2.setFont(new Font("TH Sarabun New", Font.BOLD, 48));
         g2.drawString("Load Save File", 300, 100);
         
-        // แสดงรายชื่อเซฟ
+        // แสดงรายชื่อเซฟพร้อมกรอบ
         GameSaveData[] allSlots = SaveManager.getAllSaveSlotsInfo(MAX_SAVE_SLOTS);
         int startY = 150;
+        int slotHeight = 70;
+        int slotWidth = 780;
+        int slotX = 250;
         
         for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
             GameSaveData data = allSlots[i];
-            String slotText;
+            int slotY = startY + (i * 80);
             
+            // วาดพื้นหลังของ slot
+            if (i == hoveredSlot) {
+                // ถ้ากำลัง hover จะมีสีสว่างขึ้น
+                g2.setColor(new Color(80, 120, 200, 150));
+            } else {
+                g2.setColor(new Color(40, 60, 100, 120));
+            }
+            g2.fillRoundRect(slotX, slotY - 45, slotWidth, slotHeight, 15, 15);
+            
+            // วาดกรอบ
+            if (data == null) {
+                g2.setColor(new Color(100, 100, 100, 200)); // กรอบสีเทาถ้าว่าง
+            } else {
+                g2.setColor(new Color(150, 200, 255, 250)); // กรอบสีฟ้าถ้ามีข้อมูล
+            }
+            g2.setStroke(new BasicStroke(2));
+            g2.drawRoundRect(slotX, slotY - 45, slotWidth, slotHeight, 15, 15);
+            
+            // วาดข้อความ
+            String slotText;
             if (data == null) {
                 slotText = "Slot " + (i + 1) + " - (Empty)";
-                g2.setColor(Color.GRAY);
+                g2.setColor(Color.LIGHT_GRAY);
             } else {
                 slotText = "Slot " + (i + 1) + " - " + data.getChapterName() + " (" + data.getSaveDate() + ")";
                 g2.setColor(Color.WHITE);
             }
             
             g2.setFont(new Font("TH Sarabun New", Font.PLAIN, 24));
-            g2.drawString(slotText, 250, startY + (i * 80));
+            g2.drawString(slotText, slotX + 20, slotY);
         }
     }
     
@@ -92,10 +117,57 @@ public class LoadGamePanel extends JPanel {
                 
                 for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
                     int slotY = startY + (i * 80);
-                    if (y >= slotY && y < slotY + 60) {
+                    int slotX = 250;
+                    int slotWidth = 780;
+                    int slotHeight = 70;
+                    
+                    // ตรวจสอบว่าคลิกอยู่ในกรอบของ slot หรือไม่
+                    if (e.getX() >= slotX && e.getX() <= slotX + slotWidth &&
+                        y >= slotY - 45 && y < slotY - 45 + slotHeight) {
                         loadSlot(i + 1);
                         return;
                     }
+                }
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoveredSlot = -1;
+                repaint();
+            }
+        });
+        
+        // เพิ่ม mouse motion listener สำหรับ hover effect
+        addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int y = e.getY();
+                int startY = 150;
+                int oldHovered = hoveredSlot;
+                hoveredSlot = -1;
+                
+                for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
+                    int slotY = startY + (i * 80);
+                    int slotX = 250;
+                    int slotWidth = 780;
+                    int slotHeight = 70;
+                    
+                    // ตรวจสอบว่าเมาส์อยู่ในกรอบของ slot หรือไม่
+                    if (e.getX() >= slotX && e.getX() <= slotX + slotWidth &&
+                        y >= slotY - 45 && y < slotY - 45 + slotHeight) {
+                        hoveredSlot = i;
+                        setCursor(new Cursor(Cursor.HAND_CURSOR));
+                        break;
+                    }
+                }
+                
+                if (hoveredSlot == -1) {
+                    setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }
+                
+                // repaint ถ้ามีการเปลี่ยนแปลง hover state
+                if (oldHovered != hoveredSlot) {
+                    repaint();
                 }
             }
         });

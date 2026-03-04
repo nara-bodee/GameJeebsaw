@@ -15,12 +15,13 @@ public class MainFrame extends JFrame {
     public static final String LOAD_GAME_PANEL = "LOAD_GAME";
     public static final String GAME_PANEL = "GAME";
     public static final String SHOP_PANEL = "SHOP";
+    public static final String SETTINGS_PANEL = "SETTINGS";
     
     private MenuPanel menuPanel;
     private LoadGamePanel loadGamePanel;
     private GamePanel gamePanel;
     private ShopPanel shopPanel;
-    private UI multiplayerUi;
+    private SettingsPanel settingsPanel;
     
     public MainFrame() {
         setTitle("เกมจีบสาว 7 Days");
@@ -39,12 +40,14 @@ public class MainFrame extends JFrame {
         loadGamePanel = new LoadGamePanel(this);
         gamePanel = new GamePanel(this);
         shopPanel = new ShopPanel(this);
+        settingsPanel = new SettingsPanel(this);
         
         // เพิ่ม panels เข้า CardLayout
         mainContainer.add(menuPanel, MENU_PANEL);
         mainContainer.add(loadGamePanel, LOAD_GAME_PANEL);
         mainContainer.add(gamePanel, GAME_PANEL);
         mainContainer.add(shopPanel, SHOP_PANEL);
+        mainContainer.add(settingsPanel, SETTINGS_PANEL);
         
         add(mainContainer);
         
@@ -90,10 +93,18 @@ public class MainFrame extends JFrame {
     }
 
     public void openMultiplayer() {
-        if (multiplayerUi == null || !multiplayerUi.isDisplayable()) {
-            multiplayerUi = new UI(null, false, true, this);
-        }
-        multiplayerUi.openOnlineMenu();
+        UI onlineUI = new UI(null, false, true, this);
+        onlineUI.openOnlineMenu();
+    }
+
+    public void showSettings() {
+        cardLayout.show(mainContainer, SETTINGS_PANEL);
+    }
+    
+    public void updateWindowSize() {
+        GameSettings settings = GameSettings.getInstance();
+        setSize(settings.getScreenWidth(), settings.getScreenHeight());
+        setLocationRelativeTo(null);
     }
     
     public static void main(String[] args) {

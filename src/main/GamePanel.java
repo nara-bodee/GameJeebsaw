@@ -200,6 +200,7 @@ public class GamePanel extends JPanel {
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         controlPanel.setOpaque(false);
+        
         nextDayButton = new JButton("เริ่มเกม");
         nextDayButton.setFont(buttonFont); 
         nextDayButton.addActionListener(e -> advanceDay());
@@ -286,8 +287,8 @@ public class GamePanel extends JPanel {
     
     private void showMenuDialog() {
         JDialog menuDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Menu", true);
-        menuDialog.setLayout(new GridLayout(5, 1, 10, 10));
-        menuDialog.setSize(300, 380);
+        menuDialog.setLayout(new GridLayout(4, 1, 10, 10));
+        menuDialog.setSize(300, 320);
         menuDialog.setLocationRelativeTo(this);
 
         Font menuFont = createGameFont(Font.BOLD, 22);
@@ -328,17 +329,6 @@ public class GamePanel extends JPanel {
             }
         });
 
-        // ปุ่ม Settings
-        JButton settingsBtn = new JButton("Settings");
-        settingsBtn.setFont(menuFont);
-        settingsBtn.setBackground(new Color(100, 150, 255));
-        settingsBtn.setForeground(Color.WHITE);
-        settingsBtn.setFocusPainted(false);
-        settingsBtn.addActionListener(e -> {
-            menuDialog.dispose();
-            showSettingsDialog();
-        });
-
         // ปุ่ม Exit
         JButton exitBtn = new JButton("Exit to Menu");
         exitBtn.setFont(menuFont);
@@ -353,15 +343,22 @@ public class GamePanel extends JPanel {
         menuDialog.add(continueBtn);
         menuDialog.add(newGameBtn);
         menuDialog.add(loadSaveBtn);
-        menuDialog.add(settingsBtn);
         menuDialog.add(exitBtn);
 
         menuDialog.setVisible(true);
     }
     
     private void showSettingsDialog() {
-        // ใช้โค้ดเดิมจาก GameWindow
-        JOptionPane.showMessageDialog(this, "Settings: ยังไม่ได้ทำ", "Settings", JOptionPane.INFORMATION_MESSAGE);
+        try {
+            if (mainFrame != null) {
+                mainFrame.showSettings();
+            } else {
+                JOptionPane.showMessageDialog(this, "Error: mainFrame is null", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
     }
 
     private void advanceDay() {
@@ -520,18 +517,19 @@ public class GamePanel extends JPanel {
             if (eventStep == 1 && introIndex < activeEvent.getIntroTexts().size()) {
                 dialogText.setText("<html>วันที่ " + currentDay + " : <font color='yellow'>[ EVENT ]</font><br>" + activeEvent.getIntroTexts().get(introIndex) + "</html>");
                 changeBackground(activeEvent.getIntroBgPaths().get(introIndex));
+                nextDayButton.setText("ไปต่อ");
+                nextDayButton.setEnabled(true);
             } else if (eventStep == 2) {
                 dialogText.setText("<html>" + activeEvent.getQuestionText() + "</html>");
                 changeBackground(activeEvent.getQuestionBgPath());
                 showChoices(activeEvent.getChoices());
-                nextDayButton.setEnabled(false);
+                // ไม่ต้องตั้ง nextDayButton เพราะ showChoices() จะจัดการเอง
             }
         } else {
             dialogText.setText("เกมโหลดสำเร็จ วันที่ " + currentDay);
+            nextDayButton.setText("ไปต่อ");
+            nextDayButton.setEnabled(true);
         }
-
-        nextDayButton.setText("ไปต่อ");
-        nextDayButton.setEnabled(true);
 
         if (showMessage) {
             JOptionPane.showMessageDialog(this, 
