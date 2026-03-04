@@ -160,4 +160,23 @@ public class OnlineLobby extends JFrame implements OnlineClient.ClientListener {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new OnlineLobby().setVisible(true));
     }
+    @Override
+    public void onStateSync(String state) {
+        // ยังไม่ต้องทำอะไร
+    }
+
+    @Override
+    public void onAllReady() {
+        // ยังไม่ต้องทำอะไร
+    }
+
+    @Override
+    public void onReadyStatus(String status) {
+        // ยังไม่ต้องทำอะไร
+    }
+
+    @Override
+    public void onRole(String role) {
+        // ยังไม่ต้องทำอะไร
+    }
 }
