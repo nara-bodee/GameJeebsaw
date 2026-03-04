@@ -341,14 +341,18 @@ public class UI extends JFrame {
             }
             
             @Override
-            public void onStateSync(String state) {
-                if (reconnectToken != null) {
-                    roomInfoLabel.setText("เชื่อมต่อสำเร็จ! กำลังโหลดข้อมูล...");
-                    if (state.contains("GAME_STARTED=true")) {
-                        onStartGame();
-                    }
-                }
-            }
+public void onStateSync(String state) {
+    if (activeGame[0] != null) {
+        // 🌟 ถ้าเชื่อมต่อกลับมาได้ตอนที่หน้าต่างเกมยังเปิดอยู่ ให้คืนค่า UI
+        activeGame[0].setConnectionState(false);
+        JOptionPane.showMessageDialog(activeGame[0], "เชื่อมต่อกลับเข้าห้องสำเร็จ!");
+    } else if (reconnectToken != null) {
+        roomInfoLabel.setText("เชื่อมต่อสำเร็จ! กำลังโหลดข้อมูล...");
+        if (state.contains("GAME_STARTED=true")) {
+            onStartGame();
+        }
+    }
+}
 
             @Override
             public void onPlayerListChanged(List<String> players) {
@@ -375,20 +379,37 @@ public class UI extends JFrame {
             }
 
             @Override 
-            public void onStartGame() {
-                lobby.setVisible(false);
-                UI.this.setVisible(false);
-                activeGame[0] = new GameWindow(assignedName[0], score -> {
-                    client.sendScore(score); 
-                    if (activeGame[0] != null) {
-                        activeGame[0].dispose();
-                        activeGame[0] = null;
-                    }
-                    UI.this.setVisible(true);
-                    lobby.setVisible(true);
-                },null);
-                activeGame[0].setVisible(true);
+public void onStartGame() {
+    lobby.setVisible(false);
+    UI.this.setVisible(false);
+    
+    // 🌟 ใส่ Runnable สำหรับปุ่ม Reconnect ลงไป
+    activeGame[0] = new GameWindow(assignedName[0], score -> {
+        client.sendScore(score); 
+        if (activeGame[0] != null) {
+            activeGame[0].dispose();
+            activeGame[0] = null;
+        }
+        UI.this.setVisible(true);
+        lobby.setVisible(true);
+    }, () -> {
+        // โค้ดนี้จะทำงานเมื่อผู้เล่นกดปุ่ม Reconnect ใน GameWindow
+        try {
+            String token = client.getSessionToken();
+            if (token != null) {
+                client.reconnect(token);
+            } else {
+                JOptionPane.showMessageDialog(activeGame[0], "ไม่มีข้อมูล Token สำหรับเชื่อมต่อใหม่");
+                activeGame[0].setConnectionState(true); // รีเซ็ตปุ่มให้กดใหม่ได้
             }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(activeGame[0], "เชื่อมต่อล้มเหลว: " + ex.getMessage());
+            activeGame[0].setConnectionState(true); // รีเซ็ตปุ่มให้กดใหม่ได้
+        }
+    });
+    
+    activeGame[0].setVisible(true);
+}
 
             @Override 
             public void onScoreboard(String board) {
@@ -418,15 +439,18 @@ public class UI extends JFrame {
             }
 
             @Override 
-            public void onDisconnected() {
-                if (activeGame[0] != null) {
-                    activeGame[0].dispose();
-                    activeGame[0] = null;
-                }
-                lobby.dispose();
-                JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
-                UI.this.setVisible(true);
-            }
+public void onDisconnected() {
+    if (activeGame[0] != null) {
+        // 🌟 ถ้ากำลังอยู่ในเกม ห้าม dispose() หน้าต่างทิ้ง!
+        // แต่ให้เรียกโหมดหน้าจอเน็ตหลุดแทน
+        activeGame[0].setConnectionState(true);
+    } else {
+        // ถ้ายังอยู่ที่หน้า Lobby ค่อยเตะกลับไปเมนูหลัก
+        lobby.dispose();
+        JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
+        UI.this.setVisible(true);
+    }
+}
 
             @Override public void onRole(String r) {}
             @Override public void onAllReady() {}
