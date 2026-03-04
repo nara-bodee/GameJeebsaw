@@ -328,11 +328,24 @@ public class MultiplayerGamePanel extends JPanel {
         exitBtn.setFocusPainted(false);
         exitBtn.setBounds(75, 170, 350, 55);
         exitBtn.addActionListener(e -> {
-            menuDialog.dispose();
-            // ถ้ามี main frame reference ให้ปิด UI
-            Window window = SwingUtilities.getWindowAncestor(this);
-            if (window != null) {
-                window.dispose();
+            // 🌟 เพิ่ม Confirm Dialog ตรงนี้ให้เหมือนรูปที่ 3 🌟
+            int confirm = JOptionPane.showConfirmDialog(menuDialog, 
+                    "คุณต้องการออกจากเกมนี้ใช่หรือไม่?\n(หากเล่นโหมดออนไลน์ คะแนนจะถูกส่งทันที)", 
+                    "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                menuDialog.dispose();
+                
+                // แจ้งเตือน Listener เพื่อส่งคะแนน (ส่งค่าเป็น -1 เพื่อบอกว่ายอมแพ้ หรือแล้วแต่การออกแบบของคุณ)
+                if (gameCompletionListener != null) {
+                    gameCompletionListener.onGameCompleted(player.getAffectionScore(), totalPlayers);
+                }
+                
+                // ปิดหน้าต่าง UI 
+                Window window = SwingUtilities.getWindowAncestor(this);
+                if (window != null) {
+                    window.dispose();
+                }
             }
         });
         menuDialog.add(exitBtn);

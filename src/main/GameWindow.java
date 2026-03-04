@@ -96,15 +96,16 @@ public class GameWindow extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                // 🌟 แก้ไขข้อความในส่วนนี้ให้ตรงกับรูปที่ 2 🌟
                 int confirm = JOptionPane.showConfirmDialog(GameWindow.this, 
                         "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
                         "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
                 
                 if (confirm == JOptionPane.YES_OPTION) {
                     if (GameWindow.this.onFinalScore != null) {
-                        reportFinalScoreIfNeeded(); // ส่งคะแนน แล้วหน้าต่าง Lobby จะเด้งขึ้นมาเอง
+                        reportFinalScoreIfNeeded(); 
                     } else {
-                        System.exit(0); // เล่นโหมดออฟไลน์ ปิดโปรแกรมได้เลย
+                        System.exit(0); 
                     }
                 }
             }
@@ -330,18 +331,17 @@ public class GameWindow extends JFrame {
         exitBtn.setForeground(Color.WHITE);
         exitBtn.setFocusPainted(false);
         exitBtn.addActionListener(e -> {
+            // 🌟 แก้ไขข้อความในส่วนนี้ให้ตรงกับรูปที่ 3 🌟
             int confirm = JOptionPane.showConfirmDialog(menuDialog, 
                     "คุณต้องการออกจากเกมนี้ใช่หรือไม่?\n(หากเล่นโหมดออนไลน์ คะแนนจะถูกส่งทันที)", 
                     "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
             
             if (confirm == JOptionPane.YES_OPTION) {
-                menuDialog.dispose(); // ปิดเมนู
+                menuDialog.dispose(); 
                 
                 if (onFinalScore != null) {
-                    // ถ้าเล่นออนไลน์ ส่งคะแนนให้เซิร์ฟเวอร์ แล้วเดี๋ยว Lobby จะถูกดึงกลับมาให้เอง
                     reportFinalScoreIfNeeded(); 
                 } else {
-                    // ถ้าเล่นออฟไลน์ ปิดหน้าจอเกม แล้วเปิดหน้า UI เริ่มต้นใหม่
                     dispose();
                     SwingUtilities.invokeLater(() -> new UI(() -> new GameWindow().setVisible(true)));
                 }

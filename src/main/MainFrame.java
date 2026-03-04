@@ -94,11 +94,11 @@ public class MainFrame extends JFrame {
 
     public void openMultiplayer() {
         // ซ่อน MainFrame เพื่อให้เห็นเฉพาะ Multiplayer window
-        this.setVisible(false);
+        //this.setVisible(false);
         
         // แสดง UI window เต็มหน้าจอ
         // Constructor จะดำเนินการใส่ชื่อผู้เล่นและแสดง Host/Join menu โดยอัตโนมัติ
-        UI onlineUI = new UI(null, true, true, this);
+        UI onlineUI = new UI(null, false, true, this);
     }
 
     public void showSettings() {

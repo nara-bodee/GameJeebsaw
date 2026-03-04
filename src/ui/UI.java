@@ -88,13 +88,36 @@ public class UI extends JFrame {
         int currentHeight = settings.getScreenHeight();
 
         setTitle("เกมจีบสาว");
-        // ถ้าเป็น Multiplayer mode ให้ซ่อน MainFrame แทนปิดโปรแกรม
-        if (mainFrameParent != null && onlineOnlyMode) {
-            setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        } else {
-            setDefaultCloseOperation(EXIT_ON_CLOSE);
-        }
+        // ดักจับปุ่มกากบาท (X) มุมขวาบนของหน้าต่าง UI
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // สั่งไม่ให้ปิดทันที
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                // เช็คว่ากำลังเปิดหน้าเล่นเกมอยู่ใช่ไหม (ถ้าใช่ ให้เด้งถามยอมแพ้)
+                if (gameLayer != null && gameLayer.isVisible()) {
+                    int confirm = JOptionPane.showConfirmDialog(UI.this, 
+                            "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
+                            "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
+                    
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        dispose(); // ปิดหน้าต่างนี้
+                        if (!onlineOnlyMode) System.exit(0); // ถ้าเล่นปกติ ปิดโปรแกรมเลย
+                    }
+                } else {
+                    // ถ้ายังอยู่แค่หน้าเมนู ไม่ได้เข้าเกม กด X ให้ปิดหน้าต่างได้เลย
+                    dispose();
+                    if (!onlineOnlyMode) System.exit(0);
+                }
+            }
 
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent windowEvent) {
+                // ดึงเมนูหลักกลับมาเมื่อปิดหน้าต่างออนไลน์
+                if (mainFrameParent != null && onlineOnlyMode) {
+                    mainFrameParent.setVisible(true);
+                }
+            }
+        });
         getContentPane().setLayout(null);
         getContentPane().setBackground(Color.BLACK); 
 
@@ -125,10 +148,9 @@ public class UI extends JFrame {
         if (mainFrameParent != null && onlineOnlyMode) {
             // สำหรับ Multiplayer mode ให้ข้ามหน้า start scene ไปตรง online menu
             startLayer.setVisible(false);
-            gameLayer.setVisible(true);
             
             // ขอชื่อผู้เล่น (ต้องอยู่หลัง setVisible เพื่อให้ขึ้นด้านหน้า)
-            String playerName = JOptionPane.showInputDialog(this, "ใส่ชื่อผู้เล่น:", "Multiplayer", JOptionPane.PLAIN_MESSAGE);
+           String playerName = JOptionPane.showInputDialog(mainFrameParent, "ใส่ชื่อผู้เล่น:", "Multiplayer", JOptionPane.PLAIN_MESSAGE);
             if (playerName == null) {
                 // ถ้า cancel → ปิด UI window และแสดง MainFrame
                 SwingUtilities.invokeLater(() -> {
@@ -519,7 +541,8 @@ public void onStateSync(String state) {
             public void onStartGame() {
                 SwingUtilities.invokeLater(() -> {
                     lobby.setVisible(false);
-                    
+                    if (mainFrameParent != null) mainFrameParent.setVisible(false);
+                    UI.this.setVisible(true);
                     // 🌟 สำหรับ Multiplayer mode → แสดง gameLayer ของ UI
                     if (mainFrameParent != null && onlineOnlyMode) {
                         startLayer.setVisible(false);
@@ -802,7 +825,8 @@ public void onDisconnected() {
                 public void onStartGame() {
                     SwingUtilities.invokeLater(() -> {
                         lobby.setVisible(false);
-                        
+                        if (mainFrameParent != null) mainFrameParent.setVisible(false);
+                        UI.this.setVisible(true);
                         // 🌟 สำหรับ Multiplayer mode → แสดง gameLayer ของ UI
                         if (mainFrameParent != null && onlineOnlyMode) {
                             startLayer.setVisible(false);
