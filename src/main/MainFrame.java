@@ -91,7 +91,7 @@ public class MainFrame extends JFrame {
 
     public void openMultiplayer() {
         if (multiplayerUi == null || !multiplayerUi.isDisplayable()) {
-            multiplayerUi = new UI(null, false, true);
+            multiplayerUi = new UI(null, false, true, this);
         }
         multiplayerUi.openOnlineMenu();
     }

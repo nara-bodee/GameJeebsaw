@@ -37,9 +37,10 @@ public class UI extends JFrame {
     private JTextArea dialogueText;
     private final Runnable onStartGame;
     private final boolean onlineOnlyMode;
+    private JFrame mainFrameParent;
 
     public UI() {
-        this(null, true, false);
+        this(null, true, false, null);
     }
 
     public static Font uiFont(int style, int size) {
@@ -70,13 +71,18 @@ public class UI extends JFrame {
     }
 
     public UI(Runnable onStartGame) {
-        this(onStartGame, true, false);
+        this(onStartGame, true, false, null);
     }
 
     public UI(Runnable onStartGame, boolean showWindow, boolean onlineOnlyMode) {
+        this(onStartGame, showWindow, onlineOnlyMode, null);
+    }
+
+    public UI(Runnable onStartGame, boolean showWindow, boolean onlineOnlyMode, JFrame mainFrameParent) {
         applyUiFonts();
         this.onStartGame = onStartGame;
         this.onlineOnlyMode = onlineOnlyMode;
+        this.mainFrameParent = mainFrameParent;
         GameSettings settings = GameSettings.getInstance();
         int currentWidth = settings.getScreenWidth();
         int currentHeight = settings.getScreenHeight();
@@ -317,9 +323,10 @@ public class UI extends JFrame {
 
         OnlineClient client = new OnlineClient(ip, port, playerName);
 
-        JDialog lobby = new JDialog(this, reconnectToken != null ? "Reconnecting..." : "Online Lobby", false);
+        JFrame dialogParent = (mainFrameParent != null) ? mainFrameParent : this;
+        JDialog lobby = new JDialog(dialogParent, reconnectToken != null ? "Reconnecting..." : "Online Lobby", true);
         lobby.setSize(500, 420);
-        lobby.setLocationRelativeTo(this);
+        lobby.setLocationRelativeTo(dialogParent);
         lobby.setLayout(new BorderLayout(10, 10));
 
         JLabel roomInfoLabel = new JLabel("กำลังเชื่อมต่อ...");
@@ -532,9 +539,10 @@ public void onDisconnected() {
             // ใช้ Localhost เพื่อให้ Host ใช้ระบบ Client เชื่อมตัวเอง (มีปุ่ม Ready)
             OnlineClient hostClient = new OnlineClient("127.0.0.1", server.getPort(), playerName);
 
-            JDialog lobby = new JDialog(this, "Online Room (Host)", false);
+            JFrame dialogParent = (mainFrameParent != null) ? mainFrameParent : this;
+            JDialog lobby = new JDialog(dialogParent, "Online Room (Host)", true);
             lobby.setSize(500, 420);
-            lobby.setLocationRelativeTo(this);
+            lobby.setLocationRelativeTo(dialogParent);
             lobby.setLayout(new BorderLayout(10, 10));
 
             JLabel roomInfo = new JLabel("ห้อง: " + server.getRoomName() + " | พอร์ต: " + server.getPort() + " | 1/3");
