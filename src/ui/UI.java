@@ -88,23 +88,22 @@ public class UI extends JFrame {
         int currentHeight = settings.getScreenHeight();
 
         setTitle("เกมจีบสาว");
-        // ดักจับปุ่มกากบาท (X) มุมขวาบนของหน้าต่าง UI
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // สั่งไม่ให้ปิดทันที
+        
+        // 🌟 1. ดักจับปุ่มกากบาท (X) มีแค่อันนี้อันเดียวเท่านั้น! 🌟
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); 
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
-                // เช็คว่ากำลังเปิดหน้าเล่นเกมอยู่ใช่ไหม (ถ้าใช่ ให้เด้งถามยอมแพ้)
                 if (gameLayer != null && gameLayer.isVisible()) {
                     int confirm = JOptionPane.showConfirmDialog(UI.this, 
                             "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
                             "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
                     
                     if (confirm == JOptionPane.YES_OPTION) {
-                        dispose(); // ปิดหน้าต่างนี้
-                        if (!onlineOnlyMode) System.exit(0); // ถ้าเล่นปกติ ปิดโปรแกรมเลย
+                        dispose(); 
+                        if (!onlineOnlyMode) System.exit(0); 
                     }
                 } else {
-                    // ถ้ายังอยู่แค่หน้าเมนู ไม่ได้เข้าเกม กด X ให้ปิดหน้าต่างได้เลย
                     dispose();
                     if (!onlineOnlyMode) System.exit(0);
                 }
@@ -112,15 +111,14 @@ public class UI extends JFrame {
 
             @Override
             public void windowClosed(java.awt.event.WindowEvent windowEvent) {
-                // ดึงเมนูหลักกลับมาเมื่อปิดหน้าต่างออนไลน์
                 if (mainFrameParent != null && onlineOnlyMode) {
                     mainFrameParent.setVisible(true);
                 }
             }
         });
+
         getContentPane().setLayout(null);
         getContentPane().setBackground(Color.BLACK); 
-
         getContentPane().setPreferredSize(new Dimension(currentWidth, currentHeight));
         pack();
 
@@ -135,33 +133,33 @@ public class UI extends JFrame {
         gameLayer.setVisible(false);
 
         getContentPane().add(layeredPane);
-        tagOriginalBounds(startLayer);
-        applyScale(getContentPane().getWidth(), getContentPane().getHeight());
-        // 🌟 เพิ่มโค้ดดักจับการย่อขยายหน้าต่าง (ดักจับตอนกดปุ่ม Maximize)
+        
+        // 🌟 2. ดักจับการย่อขยายหน้าจอ
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
-                // เรียกใช้ระบบคำนวณขนาดจอใหม่ทุกครั้งที่มีการดึงขอบหน้าต่าง
                 applyScale(getContentPane().getWidth(), getContentPane().getHeight());
             }
         });
+        
+        tagOriginalBounds(startLayer);
+        applyScale(getContentPane().getWidth(), getContentPane().getHeight());
+        
         setLocationRelativeTo(null);
         if (showWindow) {
             setVisible(true);
         }
         
-        // ถ้าเป็น Multiplayer mode ให้แสดง gameLayer เมื่อปิด window
-        // ถ้าเป็น Multiplayer mode ให้ซ่อน MainFrame แทนปิดโปรแกรม
+        // 🌟 3. ระบบเข้าโหมดออนไลน์ (คลีนโค้ดที่ซ้ำซ้อนออกให้แล้ว)
         if (mainFrameParent != null && onlineOnlyMode) {
             startLayer.setVisible(false);
             
-            // 🌟 1. ดักเช็คก่อนว่ามีเซฟเกมออนไลน์ที่หลุดไปหรือไม่ 🌟
             SessionInfo lastSession = ClientSessionManager.loadSession();
             boolean isReconnecting = false;
             
             if (lastSession != null) {
                 int choice = JOptionPane.showConfirmDialog(
-                    mainFrameParent, // ให้เด้งตรงกลาง MainFrame
+                    mainFrameParent, 
                     "พบเกมที่ยังไม่จบในห้อง '" + lastSession.roomName() + "'\nคุณต้องการเชื่อมต่อใหม่หรือไม่?",
                     "เชื่อมต่อใหม่",
                     JOptionPane.YES_NO_OPTION,
@@ -172,15 +170,13 @@ public class UI extends JFrame {
                     isReconnecting = true;
                     attemptReconnect(lastSession, mainFrameParent);
                 } else {
-                    ClientSessionManager.clearSession(); // ลบทิ้งถ้าไม่คอนเนค
+                    ClientSessionManager.clearSession(); 
                 }
             }
 
-            // 🌟 2. ถ้าไม่ได้ Reconnect ค่อยถามชื่อผู้เล่นและเปิดหน้าเมนู Host/Join 🌟
             if (!isReconnecting) {
                 String playerName = JOptionPane.showInputDialog(mainFrameParent, "ใส่ชื่อผู้เล่น:", "Multiplayer", JOptionPane.PLAIN_MESSAGE);
                 if (playerName == null) {
-                    // ถ้ากดยกเลิก → ปิด UI window และดึง MainFrame กลับมา
                     SwingUtilities.invokeLater(() -> {
                         this.dispose();
                         mainFrameParent.setVisible(true);
@@ -636,30 +632,23 @@ public class UI extends JFrame {
                     if (gameLayer instanceof MultiplayerGamePanel) {
                         MultiplayerGamePanel gamePanel = (MultiplayerGamePanel) gameLayer;
                         gamePanel.hideWaitingRoom();
+                        gamePanel.resetGame();
                     }
+                    // 🌟 แก้ตรงนี้! ซ่อนหน้าเล่นเกม แล้วดึงเมนูหลัก MainFrame กลับมาโชว์ 🌟
+                    UI.this.setVisible(false); 
+                    mainFrameParent.setVisible(true); 
+                } else {
+                    showUiFrameIfNeeded();
+                    if (startLayer != null) startLayer.setVisible(true);
                 }
                 
                 JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
                 
-                // ถ้าเป็น Multiplayer mode → แสดง gameLayer ของ UI แล้วรีเซ็ต
-                if (mainFrameParent != null && onlineOnlyMode) {
-                    if (gameLayer instanceof MultiplayerGamePanel) {
-                        MultiplayerGamePanel gamePanel = (MultiplayerGamePanel) gameLayer;
-                        gamePanel.resetGame();
-                    }
-                    gameLayer.setVisible(false);
-                    startLayer.setVisible(true);
-                    lobby.setVisible(true);
-                } else {
-                    showUiFrameIfNeeded();
-                    lobby.setVisible(true);
-                }
-                
+                lobby.setVisible(true);
                 readyBtn.setText("Ready");
                 ready[0] = false;
                 client.sendUnready();
             }
-
             @Override 
             public void onError(String e) {
                 if ("INVALID_TOKEN".equals(e) || e.contains("ไม่สามารถกลับเข้าห้องได้")) {
@@ -899,30 +888,23 @@ public class UI extends JFrame {
                         if (gameLayer instanceof MultiplayerGamePanel) {
                             MultiplayerGamePanel gamePanel = (MultiplayerGamePanel) gameLayer;
                             gamePanel.hideWaitingRoom();
+                            gamePanel.resetGame();
                         }
+                        // 🌟 แก้ตรงนี้! ซ่อนหน้าเล่นเกม แล้วดึงเมนูหลัก MainFrame กลับมาโชว์ 🌟
+                        UI.this.setVisible(false); 
+                        mainFrameParent.setVisible(true); 
+                    } else {
+                        showUiFrameIfNeeded();
+                        if (startLayer != null) startLayer.setVisible(true);
                     }
                     
                     JOptionPane.showMessageDialog(lobby, board, "สรุปผลคะแนน", JOptionPane.INFORMATION_MESSAGE);
                     
-                    // ถ้าเป็น Multiplayer mode → แสดง gameLayer ของ UI แล้วรีเซ็ต
-                    if (mainFrameParent != null && onlineOnlyMode) {
-                        if (gameLayer instanceof MultiplayerGamePanel) {
-                            MultiplayerGamePanel gamePanel = (MultiplayerGamePanel) gameLayer;
-                            gamePanel.resetGame();
-                        }
-                        gameLayer.setVisible(false);
-                        startLayer.setVisible(true);
-                        lobby.setVisible(true);
-                    } else {
-                        showUiFrameIfNeeded();
-                        lobby.setVisible(true);
-                    }
-                    
+                    lobby.setVisible(true);
                     readyBtn.setText("Ready");
                     ready[0] = false;
                     hostClient.sendUnready();
                 }
-
                 @Override public void onStateSync(String s){}
                 @Override public void onError(String e){}
                 @Override public void onDisconnected(){}
