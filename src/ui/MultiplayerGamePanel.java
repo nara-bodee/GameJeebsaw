@@ -222,13 +222,23 @@ public class MultiplayerGamePanel extends JPanel {
         layeredPane.add(mainScene, Integer.valueOf(0));
         
         // Add component listener to handle resizing
-        layeredPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+        // 🌟 ใส่โค้ดชุดใหม่นี้แทน: บังคับยืดทุกอย่างตามหน้าต่าง Game Panel หลักโดยตรง
+        // 🌟 บังคับให้ขยายตามจอ 100% เสมอ
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
-                mainScene.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
-                if (shopOverlay != null) {
-                    shopOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
-                }
+                int w = getWidth();
+                int h = getHeight();
+                
+                layeredPane.setBounds(0, 0, w, h);
+                mainScene.setBounds(0, 0, w, h);
+                
+                // ให้ Overlay อัปเดตขนาดตามหน้าจอ
+                if (shopOverlay != null) shopOverlay.setBounds(0, 0, w, h);
+                if (waitingRoomPanel != null) waitingRoomPanel.setBounds(0, 0, w, h);
+                
+                mainScene.revalidate();
+                mainScene.repaint();
             }
         });
         
@@ -472,65 +482,120 @@ public class MultiplayerGamePanel extends JPanel {
         choicePanel.revalidate();
         mainScene.repaint();
     }
-
+    // ==========================================
+    // 🌟 ระบบร้านค้าใหม่ (รองรับการย่อขยายจออัตโนมัติ)
+    // ==========================================
     private void showShop(String eventId) {
-        // สร้าง shop overlay บน layered pane
-        shopOverlay = new JPanel(null);
+        // ใช้ GridBagLayout เพื่อจัดให้อยู่กึ่งกลางเสมอ
+        shopOverlay = new JPanel(new GridBagLayout()); 
         shopOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
         shopOverlay.setBackground(new Color(0, 0, 0, 150));
 
         RoundedPanel popup = new RoundedPanel(40);
-        popup.setLayout(null);
+        popup.setLayout(new BorderLayout(10, 20)); // ใช้ BorderLayout 
         popup.setBackground(new Color(255, 120, 160));
-        
-        int popupWidth = 700;
-        int popupHeight = 600;
-        int panelWidth = shopOverlay.getWidth();
-        int panelHeight = shopOverlay.getHeight();
-        
-        if (panelWidth <= 0) panelWidth = 1280;
-        if (panelHeight <= 0) panelHeight = 720;
-        
-        int x = (panelWidth - popupWidth) / 2;
-        int y = (panelHeight - popupHeight) / 2;
-        
-        popup.setBounds(x, y, popupWidth, popupHeight);
+        popup.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JLabel welcomeLabel = new JLabel("ยินดีต้อนรับ! เลือกหยิบสินค้าได้เลย");
+        // ส่วนหัว (ข้อความ + ปุ่มปิด)
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+        JLabel welcomeLabel = new JLabel("ยินดีต้อนรับ! เลือกหยิบสินค้าได้เลย", SwingConstants.CENTER);
         welcomeLabel.setForeground(Color.WHITE);
-        welcomeLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
-        welcomeLabel.setBounds(30, 20, 400, 40);
-        popup.add(welcomeLabel);
+        welcomeLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 36));
+        topPanel.add(welcomeLabel, BorderLayout.CENTER);
 
         JButton closeButton = createCloseButton();
-        closeButton.setBounds(640, 15, 40, 40);
+        closeButton.setPreferredSize(new Dimension(40, 40));
         closeButton.setEnabled(false);
         closeButton.addActionListener(e -> closeShop());
-        popup.add(closeButton);
+        topPanel.add(closeButton, BorderLayout.EAST);
+        popup.add(topPanel, BorderLayout.NORTH);
 
-        int xStart = 80, yStart = 80, gapX = 200, gapY = 220, index = 0;
-
-        for (int row = 0; row < 2; row++) {
-            for (int col = 0; col < 3; col++) {
-                if (index < items.length) {
-                    popup.add(createItemCard(items[index], xStart + col * gapX, yStart + row * gapY));
-                    index++;
-                }
-            }
+        // ส่วนกลาง (ตารางไอเทม)
+        JPanel gridPanel = new JPanel(new GridLayout(2, 3, 15, 15));
+        gridPanel.setOpaque(false);
+        for (Item item : items) {
+            gridPanel.add(createItemCard(item)); // ส่งแค่ item ไป
         }
+        popup.add(gridPanel, BorderLayout.CENTER);
 
+        // ส่วนท้าย (ปุ่ม Take)
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottomPanel.setOpaque(false);
         buyButton = createStyledBuyButton();
-        buyButton.setText("TAKE IT");
-        buyButton.setBounds(280, 520, 140, 45);
+        buyButton.setPreferredSize(new Dimension(150, 50));
         buyButton.setEnabled(false);
         buyButton.addActionListener(e -> buyItem(eventId, closeButton));
-        popup.add(buyButton);
+        bottomPanel.add(buyButton);
+        popup.add(bottomPanel, BorderLayout.SOUTH);
 
         shopOverlay.add(popup);
         layeredPane.add(shopOverlay, Integer.valueOf(10));
         layeredPane.revalidate();
         layeredPane.repaint();
     }
+
+    private JPanel createItemCard(Item item) {
+        JPanel card = new RoundedPanel(20);
+        card.setLayout(new BorderLayout());
+        card.setBackground(new Color(255, 150, 180));
+        card.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+        // ป้ายตัวเลขมุมขวา
+        JPanel topArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        topArea.setOpaque(false);
+        CircleBadge badge = new CircleBadge(String.valueOf(item.quantity));
+        badge.setPreferredSize(new Dimension(35, 35));
+        item.badge = badge;
+        topArea.add(badge);
+        card.add(topArea, BorderLayout.NORTH);
+
+        // รูปภาพไอเทม (รักษาสัดส่วน ไม่ให้ภาพบีบ/แบน)
+        JLabel imageLabel = new JLabel("", SwingConstants.CENTER);
+        try {
+            ImageIcon icon = new ImageIcon(item.imagePath);
+            Image original = icon.getImage();
+            int ow = original.getWidth(null);
+            int oh = original.getHeight(null);
+            double aspect = (double) ow / oh;
+            int targetW = 80, targetH = 80;
+            if (ow > oh) targetH = (int) (80 / aspect);
+            else targetW = (int) (80 * aspect);
+            
+            Image img = original.getScaledInstance(targetW, targetH, Image.SCALE_SMOOTH);
+            imageLabel.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            imageLabel.setText("No Image");
+        }
+        card.add(imageLabel, BorderLayout.CENTER);
+
+        // ข้อความและป้าย FREE
+        JPanel bottomArea = new JPanel(new GridLayout(2, 1, 0, 5));
+        bottomArea.setOpaque(false);
+        JLabel nameLabel = new JLabel(item.name, SwingConstants.CENTER);
+        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 22));
+        bottomArea.add(nameLabel);
+
+        JLabel priceLabel = new JLabel("FREE", SwingConstants.CENTER);
+        priceLabel.setOpaque(true);
+        priceLabel.setBackground(new Color(150, 255, 150));
+        bottomArea.add(priceLabel);
+        card.add(bottomArea, BorderLayout.SOUTH);
+
+        // กดเพื่อเลือกไอเทม
+        card.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                if (selectedCard != null) selectedCard.setBackground(new Color(255, 150, 180));
+                selectedCard = card;
+                selectedItem = item;
+                card.setBackground(new Color(255, 190, 210));
+                buyButton.setEnabled(true);
+            }
+        });
+        return card;
+    }
+   
 
     private void closeShop() {
         if (shopOverlay != null) {
@@ -541,55 +606,6 @@ public class MultiplayerGamePanel extends JPanel {
             layeredPane.revalidate();
             layeredPane.repaint();
         }
-    }
-
-    private JPanel createItemCard(Item item, int x, int y) {
-        int CARD_WIDTH = 150, CARD_HEIGHT = 200;
-        JPanel card = new RoundedPanel(30);
-        card.setLayout(null);
-        card.setBackground(new Color(255, 150, 180));
-        card.setBounds(x, y, CARD_WIDTH, CARD_HEIGHT);
-
-        try {
-            ImageIcon icon = new ImageIcon(item.imagePath);
-            Image img = icon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);
-            JLabel imageLabel = new JLabel(new ImageIcon(img));
-            imageLabel.setBounds((CARD_WIDTH - 90) / 2, 15, 90, 90);
-            card.add(imageLabel);
-        } catch (Exception e) {
-            JLabel errorLabel = new JLabel("No Image", SwingConstants.CENTER);
-            errorLabel.setBounds(0, 15, CARD_WIDTH, 90);
-            card.add(errorLabel);
-        }
-
-        JLabel nameLabel = new JLabel(item.name, SwingConstants.CENTER);
-        nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 24));
-        nameLabel.setBounds(10, 120, CARD_WIDTH - 20, 25);
-        card.add(nameLabel);
-
-        JLabel priceLabel = new JLabel("FREE", SwingConstants.CENTER);
-        priceLabel.setOpaque(true);
-        priceLabel.setBackground(new Color(150, 255, 150));
-        priceLabel.setBounds((CARD_WIDTH - 90) / 2, 155, 90, 32);
-        card.add(priceLabel);
-
-        CircleBadge badge = new CircleBadge(String.valueOf(item.quantity));
-        badge.setBounds(CARD_WIDTH - 45, 8, 35, 35);
-        item.badge = badge;
-        card.add(badge);
-
-        card.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                if (selectedCard != null) selectedCard.setBackground(new Color(255, 150, 180));
-                selectedCard = card;
-                selectedItem = item;
-                card.setBackground(new Color(255, 190, 210));
-                buyButton.setEnabled(true);
-            }
-        });
-
-        return card;
     }
 
     private void buyItem(String eventId, JButton closeButton) {
@@ -661,7 +677,12 @@ public class MultiplayerGamePanel extends JPanel {
                 g2.setColor(bgColor);
                 g2.fillOval(0, 0, getWidth(), getHeight());
                 g2.setColor(Color.WHITE);
-                g2.drawString("X", 13, 25);
+                
+                // จัดตัวอักษร X ให้อยู่กึ่งกลางปุ่มเสมอ
+                FontMetrics fm = g2.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth("X")) / 2;
+                int y = ((getHeight() - fm.getHeight()) / 2) + fm.getAscent();
+                g2.drawString("X", x, y);
             }
         };
         btn.setContentAreaFilled(false); btn.setBorderPainted(false);
@@ -698,61 +719,44 @@ public class MultiplayerGamePanel extends JPanel {
         return player;
     }
 
-    public void showWaitingRoom() {
-        // Hide game content and show waiting room
+   public void showWaitingRoom() {
         choicePanel.removeAll();
         choicePanel.revalidate();
         
-        // Create waiting room overlay
-        waitingRoomPanel = new JPanel(null);
+        // ใช้ GridBagLayout เพื่อจัดกึ่งกลางอัตโนมัติ
+        waitingRoomPanel = new JPanel(new GridBagLayout());
         waitingRoomPanel.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
         waitingRoomPanel.setBackground(new Color(0, 0, 0, 150));
 
         RoundedPanel popup = new RoundedPanel(40);
-        popup.setLayout(null);
+        popup.setLayout(new BoxLayout(popup, BoxLayout.Y_AXIS));
         popup.setBackground(new Color(255, 120, 160));
+        popup.setBorder(BorderFactory.createEmptyBorder(40, 60, 40, 60));
         
-        int popupWidth = 600;
-        int popupHeight = 400;
-        int panelWidth = waitingRoomPanel.getWidth();
-        int panelHeight = waitingRoomPanel.getHeight();
-        
-        if (panelWidth <= 0) panelWidth = 1280;
-        if (panelHeight <= 0) panelHeight = 720;
-        
-        int x = (panelWidth - popupWidth) / 2;
-        int y = (panelHeight - popupHeight) / 2;
-        
-        popup.setBounds(x, y, popupWidth, popupHeight);
-
-        // Title
-        JLabel titleLabel = new JLabel("เกมจบแล้ว!");
+        JLabel titleLabel = new JLabel("เกมจบแล้ว!", SwingConstants.CENTER);
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 48));
-        titleLabel.setBounds(50, 30, 500, 60);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         popup.add(titleLabel);
+        
+        popup.add(Box.createVerticalStrut(20));
 
-        // Score display
-        JLabel scoreLabel = new JLabel("คะแนนของคุณ: " + player.getAffectionScore());
+        JLabel scoreLabel = new JLabel("คะแนนของคุณ: " + player.getAffectionScore(), SwingConstants.CENTER);
         scoreLabel.setForeground(Color.WHITE);
         scoreLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 32));
-        scoreLabel.setBounds(50, 110, 500, 50);
-        scoreLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        scoreLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         popup.add(scoreLabel);
+        
+        popup.add(Box.createVerticalStrut(30));
 
-        // Waiting message
         JLabel waitingLabel = new JLabel();
         waitingLabel.setForeground(Color.WHITE);
         waitingLabel.setFont(new Font("TH Sarabun New", Font.BOLD, 24));
-        waitingLabel.setBounds(50, 180, 500, 150);
-        waitingLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        waitingLabel.setVerticalAlignment(SwingConstants.TOP);
-        
+        waitingLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         if (totalPlayers == 1) {
             waitingLabel.setText("กำลังโหลดผลลัพธ์...");
         } else {
-            waitingLabel.setText("<html>รอให้ผู้เล่นคนอื่นจบเกม<br>(" + totalPlayers + " คน)</html>");
+            waitingLabel.setText("<html><center>รอให้ผู้เล่นคนอื่นจบเกม<br>(" + totalPlayers + " คน)</center></html>");
         }
         popup.add(waitingLabel);
 

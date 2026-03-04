@@ -135,10 +135,16 @@ public class UI extends JFrame {
         gameLayer.setVisible(false);
 
         getContentPane().add(layeredPane);
-
-        tagOriginalBounds(layeredPane);
+        tagOriginalBounds(startLayer);
         applyScale(getContentPane().getWidth(), getContentPane().getHeight());
-
+        // 🌟 เพิ่มโค้ดดักจับการย่อขยายหน้าต่าง (ดักจับตอนกดปุ่ม Maximize)
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                // เรียกใช้ระบบคำนวณขนาดจอใหม่ทุกครั้งที่มีการดึงขอบหน้าต่าง
+                applyScale(getContentPane().getWidth(), getContentPane().getHeight());
+            }
+        });
         setLocationRelativeTo(null);
         if (showWindow) {
             setVisible(true);
@@ -187,28 +193,6 @@ public class UI extends JFrame {
                     SwingUtilities.invokeLater(() -> showMultiplayerMenu(finalPlayerName));
                 }
             }
-            
-            // ดักจับปุ่มกากบาท (X) มุมขวาบนของหน้าต่าง UI (โค้ดเก่าที่เราแก้ไว้)
-            setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-            addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override
-                public void windowClosing(java.awt.event.WindowEvent e) {
-                    if (gameLayer != null && gameLayer.isVisible()) {
-                        int confirm = JOptionPane.showConfirmDialog(UI.this, 
-                                "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
-                                "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
-                        if (confirm == JOptionPane.YES_OPTION) {
-                            dispose(); 
-                        }
-                    } else {
-                        dispose();
-                    }
-                }
-                @Override
-                public void windowClosed(java.awt.event.WindowEvent windowEvent) {
-                    if (mainFrameParent != null) mainFrameParent.setVisible(true);
-                }
-            });
         }
     }
 
@@ -247,17 +231,28 @@ public class UI extends JFrame {
         int offsetX = (actualWidth - scaledWidth) / 2;
         int offsetY = (actualHeight - scaledHeight) / 2;
 
-        scaleFromBase(layeredPane, scale);
+        // 🌟 1. ย่อขยายสัดส่วนและพิกัด เฉพาะหน้าเมนูหลัก (startLayer)
+        scaleFromBase(startLayer, scale);
 
-        layeredPane.setBounds(offsetX, offsetY, scaledWidth, scaledHeight);
-        startLayer.setBounds(0, 0, scaledWidth, scaledHeight);
-        gameLayer.setBounds(0, 0, scaledWidth, scaledHeight);
+        // 🌟 2. สั่งให้กรอบ LayeredPane ขยายเต็มกรอบหน้าต่างเสมอ (ไม่เอาขอบดำ)
+        layeredPane.setBounds(0, 0, actualWidth, actualHeight);
+        
+        // 🌟 3. จัดหน้าเมนูหลัก (startLayer) ให้อยู่กึ่งกลางหน้าจอ
+        startLayer.setBounds(offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        // 🌟 4. สั่งให้หน้าเล่นเกม (gameLayer) ขยายเต็มจออัตโนมัติ (ให้มันจัดการ Layout ตัวเอง)
+        if (gameLayer != null) {
+            gameLayer.setBounds(0, 0, actualWidth, actualHeight);
+            gameLayer.revalidate();
+            gameLayer.repaint();
+        }
 
         revalidate();
         repaint();
     }
 
     private void tagOriginalBounds(Container container) {
+        if (container instanceof MultiplayerGamePanel) return;
         if (container instanceof JComponent) {
             JComponent comp = (JComponent) container;
             comp.putClientProperty("baseBounds", comp.getBounds());
@@ -273,6 +268,7 @@ public class UI extends JFrame {
     }
 
     private void scaleFromBase(Container container, double scale) {
+        if (container instanceof MultiplayerGamePanel) return;
         if (container instanceof JComponent) {
             JComponent comp = (JComponent) container;
             Rectangle base = (Rectangle) comp.getClientProperty("baseBounds");
