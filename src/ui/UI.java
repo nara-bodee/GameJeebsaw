@@ -145,32 +145,68 @@ public class UI extends JFrame {
         }
         
         // ถ้าเป็น Multiplayer mode ให้แสดง gameLayer เมื่อปิด window
+        // ถ้าเป็น Multiplayer mode ให้ซ่อน MainFrame แทนปิดโปรแกรม
         if (mainFrameParent != null && onlineOnlyMode) {
-            // สำหรับ Multiplayer mode ให้ข้ามหน้า start scene ไปตรง online menu
             startLayer.setVisible(false);
             
-            // ขอชื่อผู้เล่น (ต้องอยู่หลัง setVisible เพื่อให้ขึ้นด้านหน้า)
-           String playerName = JOptionPane.showInputDialog(mainFrameParent, "ใส่ชื่อผู้เล่น:", "Multiplayer", JOptionPane.PLAIN_MESSAGE);
-            if (playerName == null) {
-                // ถ้า cancel → ปิด UI window และแสดง MainFrame
-                SwingUtilities.invokeLater(() -> {
-                    this.dispose();
-                });
-            } else {
-                playerName = playerName.trim();
-                if (playerName.isEmpty()) playerName = "Player";
-                
-                // แสดง Host/Join menu
-                String finalPlayerName = playerName;
-                SwingUtilities.invokeLater(() -> showMultiplayerMenu(finalPlayerName));
+            // 🌟 1. ดักเช็คก่อนว่ามีเซฟเกมออนไลน์ที่หลุดไปหรือไม่ 🌟
+            SessionInfo lastSession = ClientSessionManager.loadSession();
+            boolean isReconnecting = false;
+            
+            if (lastSession != null) {
+                int choice = JOptionPane.showConfirmDialog(
+                    mainFrameParent, // ให้เด้งตรงกลาง MainFrame
+                    "พบเกมที่ยังไม่จบในห้อง '" + lastSession.roomName() + "'\nคุณต้องการเชื่อมต่อใหม่หรือไม่?",
+                    "เชื่อมต่อใหม่",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+                );
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    isReconnecting = true;
+                    attemptReconnect(lastSession, mainFrameParent);
+                } else {
+                    ClientSessionManager.clearSession(); // ลบทิ้งถ้าไม่คอนเนค
+                }
+            }
+
+            // 🌟 2. ถ้าไม่ได้ Reconnect ค่อยถามชื่อผู้เล่นและเปิดหน้าเมนู Host/Join 🌟
+            if (!isReconnecting) {
+                String playerName = JOptionPane.showInputDialog(mainFrameParent, "ใส่ชื่อผู้เล่น:", "Multiplayer", JOptionPane.PLAIN_MESSAGE);
+                if (playerName == null) {
+                    // ถ้ากดยกเลิก → ปิด UI window และดึง MainFrame กลับมา
+                    SwingUtilities.invokeLater(() -> {
+                        this.dispose();
+                        mainFrameParent.setVisible(true);
+                    });
+                } else {
+                    playerName = playerName.trim();
+                    if (playerName.isEmpty()) playerName = "Player";
+                    
+                    String finalPlayerName = playerName;
+                    SwingUtilities.invokeLater(() -> showMultiplayerMenu(finalPlayerName));
+                }
             }
             
+            // ดักจับปุ่มกากบาท (X) มุมขวาบนของหน้าต่าง UI (โค้ดเก่าที่เราแก้ไว้)
+            setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
-                public void windowClosed(java.awt.event.WindowEvent windowEvent) {
-                    if (mainFrameParent != null) {
-                        mainFrameParent.setVisible(true);
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    if (gameLayer != null && gameLayer.isVisible()) {
+                        int confirm = JOptionPane.showConfirmDialog(UI.this, 
+                                "คุณต้องการยอมแพ้และออกจากเกมนี้ใช่หรือไม่?\n(คะแนนของคุณจะถูกส่งทันที)", 
+                                "ยืนยันการออก", JOptionPane.YES_NO_OPTION);
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            dispose(); 
+                        }
+                    } else {
+                        dispose();
                     }
+                }
+                @Override
+                public void windowClosed(java.awt.event.WindowEvent windowEvent) {
+                    if (mainFrameParent != null) mainFrameParent.setVisible(true);
                 }
             });
         }
@@ -500,18 +536,18 @@ public class UI extends JFrame {
             }
             
             @Override
-public void onStateSync(String state) {
-    if (activeGame[0] != null) {
-        // 🌟 ถ้าเชื่อมต่อกลับมาได้ตอนที่หน้าต่างเกมยังเปิดอยู่ ให้คืนค่า UI
-        activeGame[0].setConnectionState(false);
-        JOptionPane.showMessageDialog(activeGame[0], "เชื่อมต่อกลับเข้าห้องสำเร็จ!");
-    } else if (reconnectToken != null) {
-        roomInfoLabel.setText("เชื่อมต่อสำเร็จ! กำลังโหลดข้อมูล...");
-        if (state.contains("GAME_STARTED=true")) {
-            onStartGame();
-        }
-    }
-}
+            public void onStateSync(String state) {
+                if (activeGame[0] != null) {
+                    activeGame[0].setConnectionState(false);
+                    JOptionPane.showMessageDialog(activeGame[0], "เชื่อมต่อกลับเข้าห้องสำเร็จ!");
+                } else if (reconnectToken != null) {
+                    // 🌟 ถ้ากำลัง Reconnect ให้เช็คสถานะและโหลดหน้าเกมขึ้นมา
+                    roomInfoLabel.setText("เชื่อมต่อสำเร็จ! กำลังโหลดข้อมูล...");
+                    if (state.contains("GAME_STARTED=true")) {
+                        onStartGame(); 
+                    }
+                }
+            }
 
             @Override
             public void onPlayerListChanged(List<String> players) {
@@ -646,25 +682,19 @@ public void onStateSync(String state) {
                 JOptionPane.showMessageDialog(lobby, "Error: " + e, "ผิดพลาด", JOptionPane.ERROR_MESSAGE);
             }
 
-            @Override 
-public void onDisconnected() {
-    if (activeGame[0] != null) {
-        // 🌟 ถ้ากำลังอยู่ในเกม ห้าม dispose() หน้าต่างทิ้ง!
-        // แต่ให้เรียกโหมดหน้าจอเน็ตหลุดแทน
-        activeGame[0].setConnectionState(true);
-    } else {
-        // ถ้ายังอยู่ที่หน้า Lobby ค่อยเตะกลับไปเมนูหลัก
-        lobby.dispose();
-        JOptionPane.showMessageDialog(lobby, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
-        
-        // ถ้าเป็น Multiplayer mode ให้ปิด UI window และแสดง MainFrame
-        if (mainFrameParent != null && onlineOnlyMode) {
-            UI.this.dispose();
-        } else {
-            showUiFrameIfNeeded();
-        }
-    }
-}
+           @Override 
+            public void onDisconnected() {
+                // แจ้งเตือนแล้วเด้งกลับไปหน้าเมนูหลักเลย
+                lobby.dispose();
+                JOptionPane.showMessageDialog(UI.this, "เซิร์ฟเวอร์ถูกปิด หรือการเชื่อมต่อขาดหายไป", "ตัดการเชื่อมต่อ", JOptionPane.WARNING_MESSAGE);
+                
+                if (mainFrameParent != null && onlineOnlyMode) {
+                    UI.this.dispose();
+                    mainFrameParent.setVisible(true); // กลับไปเมนูหลัก
+                } else {
+                    showUiFrameIfNeeded();
+                }
+            }
 
             @Override public void onRole(String r) {}
             @Override public void onAllReady() {}
