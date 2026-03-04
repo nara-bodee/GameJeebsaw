@@ -244,6 +244,20 @@ public class MultiplayerGamePanel extends JPanel {
         eventStep = 0;
         introIndex = 0;
         activeEvent = null;
+
+        // 🌟 1. สร้าง Player ใหม่ทุกครั้ง เพื่อให้คะแนน (Affection) กลับเป็น 0 🌟
+        player = new Player(); 
+        
+        // 🌟 2. รีเซ็ตสต๊อกร้านค้าให้กลับมาเต็มเหมือนเดิม 🌟
+        items = new Item[] {
+            new Item("ช่อดอกไม้", 100, "../images/rose.png"),
+            new Item("สมุดสรุปคณิตศาสตร์", 100, "../images/book.png"),
+            new Item("เลมอนโซดา", 50, "../images/lemon_soda.png"),
+            new Item("ร่มคันใหญ่", 100, "../images/umbrella.png"),
+            new Item("พวงกุญแจตุ๊กตา", 50, "../images/baby.png"),
+            new Item("เพชรมายา", 1000000, "../images/Daimon.png")
+        };
+
         backgroundImage = new ImageIcon("../images_Story/ปก.png").getImage();
         dialogText.setText("ยินดีต้อนรับสู่เกม 7 Days! เป้าหมายคือพิชิตใจเลม่อนให้ได้ภายใน 7 วัน");
         nextDayButton.setText("เริ่มเกม");
@@ -252,7 +266,6 @@ public class MultiplayerGamePanel extends JPanel {
         choicePanel.revalidate();
         mainScene.repaint();
     }
-
     public void setGameCompletionListener(GameCompletionListener listener) {
         this.gameCompletionListener = listener;
     }
