@@ -8,6 +8,19 @@
             "mainClass": "main.MainFrame",
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ]
+        },
+        {
+            "type": "java",
+            "name": "UI",
+            "request": "launch",
+            "mainClass": "ui.UI",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
             "classPaths": [
                 "${workspaceFolder}/bin"
             ]
@@ -17,7 +30,8 @@
             "name": "MainApp",
             "request": "launch",
             "mainClass": "main.MainApp",
-            "projectName": "GameJeebsaw_5607910b"
+            "projectName": "GameJeebsaw_5607910b",
+            "preLaunchTask": "Compile Game (Thai)"
         },
         {
             "type": "java",
@@ -26,6 +40,7 @@
             "mainClass": "main.GameWindow",
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
             "classPaths": [
                 "${workspaceFolder}/bin"
             ]
@@ -37,6 +52,7 @@
             "mainClass": "main.GameWindow",
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
             "classPaths": [
                 "${workspaceFolder}/bin"
             ]

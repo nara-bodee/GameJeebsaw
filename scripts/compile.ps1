@@ -37,7 +37,7 @@ if (-not (Test-Path '..\bin')) {
     New-Item -ItemType Directory -Path '..\bin' | Out-Null
 }
 
-& $javacPath -encoding UTF-8 -d ..\bin main/*.java ui/*.java shop/*.java core/*.java story/*.java save/*.java
+& $javacPath -encoding UTF-8 -d ..\bin main/*.java ui/*.java shop/*.java core/*.java story/*.java save/*.java online/*.java
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
