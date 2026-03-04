@@ -353,8 +353,8 @@ public class OnlineServer {
                 playersByToken.put(ps.token, ps);
                 this.slot = ps;
 
-                send("WELCOME|" + ps.playerId + "|" + ps.token + "|" +
-                        roomName + "|" + maxPlayers + "|" + playersByToken.size());
+                send("WELCOME|" + ps.name + "|" + ps.token + "|" +
+                roomName + "|" + maxPlayers + "|" + playersByToken.size());
 
                 broadcastPlayerList();
                 broadcastReadyStatus();
