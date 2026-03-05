@@ -33,7 +33,10 @@ if (-not $javaPath) {
     exit 1
 }
 
-& $javaPath -cp ..\bin main.GameWindow
+# Set classpath with Gson library
+$classpath = "$workspaceRoot\bin;$workspaceRoot\lib\gson-2.10.1.jar"
+
+& $javaPath -cp $classpath main.GameWindow
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

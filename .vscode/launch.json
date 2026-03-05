@@ -3,6 +3,30 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MainFrame (New)",
+            "request": "launch",
+            "mainClass": "main.MainFrame",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ]
+        },
+        {
+            "type": "java",
+            "name": "UI",
+            "request": "launch",
+            "mainClass": "ui.UI",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile Game (Thai)",
+            "classPaths": [
+                "${workspaceFolder}/bin"
+            ]
+        },
+        {
+            "type": "java",
             "name": "MainApp",
             "request": "launch",
             "mainClass": "main.MainApp",

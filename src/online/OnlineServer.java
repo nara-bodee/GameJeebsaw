@@ -1,25 +1,18 @@
 package online;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.*;
+import java.util.concurrent.*;
 import javax.swing.SwingUtilities;
 
 public class OnlineServer {
+    // =========================
+    // Turn System
+    // =========================
+    private final List<String> turnOrder = new ArrayList<>();
+    private int currentTurnIndex = 0;
 
     public interface ServerListener {
         void onPlayerListChanged(List<String> players);
@@ -27,33 +20,38 @@ public class OnlineServer {
         void onError(String error);
     }
 
+    private static final long GRACE_PERIOD_MS = 60000;
+
     private final String roomName;
     private final String hostName;
     private final int maxPlayers;
 
-    private final Set<String> players = new LinkedHashSet<>();
+    private final Map<String, PlayerSlot> playersByToken = new LinkedHashMap<>();
     private final List<ClientSession> sessions = new CopyOnWriteArrayList<>();
-    private final Map<String, Integer> scores = new LinkedHashMap<>();
 
     private ServerSocket serverSocket;
     private DatagramSocket discoverySocket;
-    private Thread acceptThread;
-    private Thread discoveryThread;
-
     private volatile boolean running;
     private volatile boolean gameStarted;
     private volatile boolean scoreboardSent;
+
     private int expectedPlayersAtStart;
     private ServerListener listener;
 
+    // =========================
+    // Constructor
+    // =========================
     public OnlineServer(String roomName, String hostName, int maxPlayers) {
         this.roomName = sanitize(roomName);
         this.hostName = sanitize(hostName);
         this.maxPlayers = maxPlayers;
-        this.players.add(this.hostName);
     }
 
-    public synchronized void setListener(ServerListener listener) {
+    // =========================
+    // Public API
+    // =========================
+
+    public void setListener(ServerListener listener) {
         this.listener = listener;
     }
 
@@ -62,63 +60,108 @@ public class OnlineServer {
         running = true;
         startAcceptLoop();
         startDiscoveryLoop();
-        notifyPlayerListChanged();
+        startCleanupLoop();
+        notifyPlayerList();
     }
 
-    public synchronized int getPort() {
+    public int getPort() {
         return serverSocket != null ? serverSocket.getLocalPort() : -1;
     }
 
-    public synchronized String getRoomName() {
+    public String getRoomName() {
         return roomName;
     }
 
     public synchronized void startGame() {
-        if (!running || gameStarted) {
-            return;
-        }
+        if (gameStarted) return;
+
         gameStarted = true;
-        expectedPlayersAtStart = players.size();
+        expectedPlayersAtStart = playersByToken.size();
+        for (PlayerSlot p : playersByToken.values()) {
+            p.score = 0;
+            p.scoreSubmitted = false;
+        }
+        currentTurnIndex = 0;
         broadcast("START");
+        broadcastCurrentTurn();
+    }
+
+    private void broadcastCurrentTurn() {
+        if (turnOrder.isEmpty()) return;
+
+        String token = turnOrder.get(currentTurnIndex);
+        PlayerSlot p = playersByToken.get(token);
+
+        if (p != null) {
+            broadcast("CURRENT_TURN|" + p.name);
+        }
+    }
+
+    private synchronized void nextTurn() {
+        if (turnOrder.isEmpty()) return;
+
+        int attempts = 0;
+        do {
+            currentTurnIndex = (currentTurnIndex + 1) % turnOrder.size();
+            String token = turnOrder.get(currentTurnIndex);
+            PlayerSlot p = playersByToken.get(token);
+
+            if (p != null && p.connected) {
+                broadcastCurrentTurn();
+                return;
+            }
+            attempts++;
+        } while (attempts < turnOrder.size());
+
+        System.out.println("No active players.");
     }
 
     public synchronized void submitHostScore(int score) {
-        submitScore(hostName, score);
+        PlayerSlot host = playersByToken.get("HOST");
+        if (host != null) {
+            host.score = score;
+            checkScoreboard();
+        }
     }
 
     public synchronized void stop() {
         running = false;
-        tryClose(serverSocket);
-        tryClose(discoverySocket);
-        for (ClientSession session : sessions) {
-            session.close();
-        }
+        try { if (serverSocket != null) serverSocket.close(); } catch (Exception ignored) {}
+        try { if (discoverySocket != null) discoverySocket.close(); } catch (Exception ignored) {}
+        for (ClientSession s : sessions) s.close();
         sessions.clear();
     }
 
+    // =========================
+    // Player Model
+    // =========================
+
+    private static class PlayerSlot {
+        String playerId;
+        String name;
+        String token;
+        boolean connected;
+        long disconnectTime;
+        int score;
+        boolean ready;         
+        boolean isHost; 
+        ClientSession session;
+        boolean scoreSubmitted;
+    }
+
+    // =========================
+    // Network Loops
+    // =========================
+
     private void startAcceptLoop() {
-        acceptThread = new Thread(() -> {
+        Thread acceptThread = new Thread(() -> {
             while (running) {
                 try {
                     Socket socket = serverSocket.accept();
-                    if (!running) {
-                        tryClose(socket);
-                        break;
-                    }
-
-                    if (players.size() >= maxPlayers) {
-                        rejectClient(socket, "Room is full");
-                        continue;
-                    }
-
                     ClientSession session = new ClientSession(socket);
                     sessions.add(session);
                     session.start();
-                } catch (IOException e) {
-                    if (running) {
-                        notifyError("เกิดข้อผิดพลาดเซิร์ฟเวอร์: " + e.getMessage());
-                    }
-                }
+                } catch (IOException ignored) {}
             }
         }, "OnlineServer-Accept");
         acceptThread.setDaemon(true);
@@ -126,7 +169,7 @@ public class OnlineServer {
     }
 
     private void startDiscoveryLoop() {
-        discoveryThread = new Thread(() -> {
+        Thread discoveryThread = new Thread(() -> {
             try {
                 discoverySocket = new DatagramSocket(LanDiscovery.DISCOVERY_PORT);
                 discoverySocket.setBroadcast(true);
@@ -141,137 +184,72 @@ public class OnlineServer {
                         continue;
                     }
 
-                    String responseText = "GJ_ROOM|" + roomName + "|" + getPort() + "|" + players.size() + "|" + maxPlayers + "|" + hostName;
+                    long activePlayersCount = playersByToken.values().stream().filter(p -> p.connected).count();
+                    String responseText = "GJ_ROOM|" + roomName + "|" + getPort() + "|" + activePlayersCount + "|" + maxPlayers + "|" + hostName;
+                    
                     byte[] responseData = responseText.getBytes(StandardCharsets.UTF_8);
                     DatagramPacket response = new DatagramPacket(
-                        responseData,
-                        responseData.length,
-                        request.getAddress(),
-                        request.getPort()
+                        responseData, responseData.length,
+                        request.getAddress(), request.getPort()
                     );
                     discoverySocket.send(response);
                 }
-            } catch (IOException e) {
-                if (running) {
-                    notifyError("Discovery error: " + e.getMessage());
-                }
+            } catch (IOException ignored) {
             }
         }, "OnlineServer-Discovery");
         discoveryThread.setDaemon(true);
         discoveryThread.start();
     }
 
-    private synchronized void broadcast(String message) {
-        for (ClientSession session : sessions) {
-            session.send(message);
-        }
-    }
+    private void startCleanupLoop() {
+        Thread cleanupThread = new Thread(() -> {
+            while (running) {
+                synchronized (this) {
+                    long now = System.currentTimeMillis();
+                    Iterator<PlayerSlot> it = playersByToken.values().iterator();
+                    while (it.hasNext()) {
+                        PlayerSlot p = it.next();
+                        if (!p.connected &&
+                            now - p.disconnectTime > GRACE_PERIOD_MS &&
+                            !"HOST".equals(p.token)) {
 
-    private synchronized void broadcastPlayerList() {
-        String joined = String.join(",", players);
-        broadcast("PLAYER_LIST|" + joined);
-        notifyPlayerListChanged();
-    }
+                            turnOrder.remove(p.token);
 
-    private synchronized void notifyPlayerListChanged() {
-        if (listener != null) {
-            List<String> snapshot = new ArrayList<>(players);
-            SwingUtilities.invokeLater(() -> listener.onPlayerListChanged(snapshot));
-        }
-    }
+                            if (currentTurnIndex >= turnOrder.size()) {
+                                currentTurnIndex = 0;
+                            }
 
-    private synchronized void submitScore(String playerName, int score) {
-        if (!gameStarted || scoreboardSent) {
-            return;
-        }
-
-        scores.put(playerName, score);
-        if (scores.size() >= expectedPlayersAtStart) {
-            scoreboardSent = true;
-            String board = buildScoreboard();
-            broadcast("SCOREBOARD|" + board.replace("\n", "\\n"));
-            if (listener != null) {
-                SwingUtilities.invokeLater(() -> listener.onScoreboardReady(board));
+                            broadcast("PLAYER_REMOVED|" + p.name);
+                            it.remove();
+                            
+                            if (gameStarted) expectedPlayersAtStart--;
+                            checkScoreboard(); 
+                        }
+                    }
+                }
+                try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
             }
-        }
+        }, "OnlineServer-Cleanup");
+        cleanupThread.setDaemon(true);
+        cleanupThread.start();
     }
 
-    private synchronized String buildScoreboard() {
-        List<Map.Entry<String, Integer>> ranking = new ArrayList<>(scores.entrySet());
-        ranking.sort(Comparator.comparingInt(Map.Entry<String, Integer>::getValue).reversed());
-
-        StringBuilder builder = new StringBuilder();
-        builder.append("ผลคะแนนห้องออนไลน์\n");
-        for (int i = 0; i < ranking.size(); i++) {
-            Map.Entry<String, Integer> row = ranking.get(i);
-            builder.append(i + 1)
-                .append(") ")
-                .append(row.getKey())
-                .append(" - ")
-                .append(row.getValue())
-                .append("\n");
-        }
-        return builder.toString().trim();
-    }
-
-    private void rejectClient(Socket socket, String message) {
-        try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
-            writer.println("ERROR|" + sanitize(message));
-        } catch (IOException ignored) {
-        } finally {
-            tryClose(socket);
-        }
-    }
-
-    private void notifyError(String error) {
-        if (listener != null) {
-            SwingUtilities.invokeLater(() -> listener.onError(error));
-        }
-    }
-
-    private static String sanitize(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            return "Player";
-        }
-        return text.trim().replace("|", "_").replace(",", "_").replace(";", "_").replace(":", "_");
-    }
-
-    private static void tryClose(ServerSocket socket) {
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-        }
-    }
-
-    private static void tryClose(DatagramSocket socket) {
-        if (socket != null) {
-            socket.close();
-        }
-    }
-
-    private static void tryClose(Socket socket) {
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-        }
-    }
+    // =========================
+    // Client Session
+    // =========================
 
     private class ClientSession {
         private final Socket socket;
         private BufferedReader reader;
         private PrintWriter writer;
-        private String playerName;
+        private PlayerSlot slot;
 
         ClientSession(Socket socket) {
             this.socket = socket;
         }
 
         void start() {
-            Thread thread = new Thread(this::run, "OnlineServer-Client");
+            Thread thread = new Thread(this::run, "OnlineServer-ClientSession");
             thread.setDaemon(true);
             thread.start();
         }
@@ -281,77 +259,328 @@ public class OnlineServer {
                 reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
 
-                String firstLine = reader.readLine();
-                if (firstLine == null || !firstLine.startsWith("JOIN|")) {
-                    send("ERROR|Invalid join");
+                String first = reader.readLine();
+                if (first == null) return;
+
+                if (first.startsWith("HELLO|")) {
+                    handleHello(first.substring(6));
+                } else if (first.startsWith("RECONNECT|")) {
+                    handleReconnect(first.substring(10));
+                } else if (first.startsWith("JOIN|")) {
+                    handleHello(first.substring(5)); // รองรับ client เก่า
+                } else {
+                    send("ERROR|Invalid handshake");
                     return;
                 }
-
-                String requestedName = firstLine.substring("JOIN|".length());
-                synchronized (OnlineServer.this) {
-                    playerName = uniqueName(sanitize(requestedName));
-                    players.add(playerName);
-                }
-
-                send("WELCOME|" + playerName + "|" + roomName + "|" + maxPlayers + "|" + players.size());
-                broadcastPlayerList();
 
                 String line;
                 while (running && (line = reader.readLine()) != null) {
                     if (line.startsWith("SCORE|")) {
-                        int score = parseInt(line.substring("SCORE|".length()), 0);
+                        int score = Integer.parseInt(line.substring(6));
                         synchronized (OnlineServer.this) {
-                            submitScore(playerName, score);
+                            slot.score = score;
+                            slot.scoreSubmitted = true;
+                            checkScoreboard();
                         }
-                    } else if (line.equals("QUIT")) {
+                    }
+                    else if (line.equals("READY")) {
+                        synchronized (OnlineServer.this) {
+                            slot.ready = true;
+                            broadcastReadyStatus();
+                            checkAllReady();
+                        }
+                    }
+                    else if (line.equals("UNREADY")) {
+                        synchronized (OnlineServer.this) {
+                            slot.ready = false;
+                            broadcastReadyStatus();
+                        }
+                    }
+                    else if (line.equals("START_REQUEST")) {
+                        synchronized (OnlineServer.this) {
+                            if (!slot.isHost) {
+                                send("ERROR|Only host can start");
+                                continue;
+                            }
+                            if (!areAllReady()) {
+                                send("ERROR|Not everyone ready");
+                                continue;
+                            }
+                            startGame();
+                        }
+                    }
+                    else if (line.equals("QUIT")) {
                         break;
                     }
                 }
             } catch (IOException ignored) {
             } finally {
+                handleDisconnect();
                 close();
-                synchronized (OnlineServer.this) {
-                    sessions.remove(this);
-                    if (playerName != null) {
-                        players.remove(playerName);
-                        if (!scoreboardSent) {
-                            scores.remove(playerName);
+                sessions.remove(this);
+            }
+        }
+
+        void handleHello(String name) {
+            synchronized (OnlineServer.this) {
+                if (gameStarted) {
+                    send("ERROR|Game has already started");
+                    return;
+                }
+
+                if (playersByToken.size() >= maxPlayers) {
+                    send("ERROR|Room full");
+                    return;
+                }
+
+                PlayerSlot ps = new PlayerSlot();
+                ps.playerId = UUID.randomUUID().toString();
+                ps.token = UUID.randomUUID().toString();
+                ps.name = uniqueName(sanitize(name));
+                ps.connected = true;
+                ps.session = this;
+                ps.ready = false;
+                turnOrder.add(ps.token);
+
+                if (playersByToken.isEmpty()) {
+                    ps.isHost = true;
+                    send("ROLE|HOST");
+                } else {
+                    ps.isHost = false;
+                    send("ROLE|PLAYER");
+                }
+
+                playersByToken.put(ps.token, ps);
+                this.slot = ps;
+
+                send("WELCOME|" + ps.name + "|" + ps.token + "|" +
+                roomName + "|" + maxPlayers + "|" + playersByToken.size());
+
+                broadcastPlayerList();
+                broadcastReadyStatus();
+            }
+        }
+
+        void handleReconnect(String token) {
+            synchronized (OnlineServer.this) {
+                PlayerSlot ps = playersByToken.get(token);
+                if (ps == null) {
+                    send("ERROR|หมดเวลา Reconnect หรือ Token ไม่ถูกต้อง");
+                    return;
+                }
+                ps.connected = true;
+                ps.session = this;
+                this.slot = ps;
+
+                send("STATE_SYNC|" + buildStateSync());
+                broadcast("PLAYER_RECONNECTED|" + ps.name);
+            }
+            broadcastCurrentTurn();
+            broadcastReadyStatus();
+            broadcastPlayerList(); 
+        }
+
+        void handleDisconnect() {
+            synchronized (OnlineServer.this) {
+                if (slot != null) {
+                    slot.connected = false;
+                    slot.disconnectTime = System.currentTimeMillis();
+                    slot.session = null;
+
+                    broadcast("PLAYER_DISCONNECTED|" + slot.name);
+
+                    if (!turnOrder.isEmpty()) {
+                        String currentToken = turnOrder.get(currentTurnIndex);
+                        if (slot.token.equals(currentToken)) {
+                            nextTurn();
                         }
-                        if (!gameStarted) {
-                            broadcastPlayerList();
+                    }
+
+                    if (!gameStarted && !slot.isHost) {
+                        playersByToken.remove(slot.token);
+                        turnOrder.remove(slot.token);
+                        
+                        if (currentTurnIndex >= turnOrder.size()) {
+                            currentTurnIndex = 0;
                         }
+                    }
+
+                    broadcastPlayerList();
+                    broadcastReadyStatus();
+                    checkAllReady(); 
+                    if (gameStarted) {
+                        checkScoreboard();
                     }
                 }
             }
         }
 
-        void send(String message) {
-            if (writer != null) {
-                writer.println(message);
-            }
+        void send(String msg) {
+            if (writer != null) writer.println(msg);
         }
 
         void close() {
-            tryClose(socket);
+            try { socket.close(); } catch (Exception ignored) {}
         }
     }
 
-    private synchronized String uniqueName(String baseName) {
-        if (!players.contains(baseName)) {
-            return baseName;
+    // =========================
+    // Scoreboard
+    // =========================
+
+    private void checkScoreboard() {
+        if (!gameStarted || scoreboardSent) return;
+
+        long activePlayers = playersByToken.values().stream()
+            .filter(p -> p.connected)
+            .count();
+
+        long submitted = playersByToken.values().stream()
+            .filter(p -> p.scoreSubmitted)
+            .count();
+
+        if (submitted >= expectedPlayersAtStart || (activePlayers > 0 && submitted >= activePlayers)) {
+            scoreboardSent = true;
+            String board = buildScoreboard();
+            broadcast("SCOREBOARD|" + board.replace("\n", "\\n"));
+
+            if (listener != null) {
+                SwingUtilities.invokeLater(() ->
+                        listener.onScoreboardReady(board));
+            }
+            
+            gameStarted = false;
+            scoreboardSent = false;
+            for (PlayerSlot p : playersByToken.values()) {
+                p.scoreSubmitted = false;
+                p.ready = false; 
+                p.score = 0;
+            }
+            broadcastReadyStatus();
         }
-        int index = 2;
-        while (players.contains(baseName + "_" + index)) {
-            index++;
-        }
-        return baseName + "_" + index;
     }
 
-    private static int parseInt(String value, int fallback) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return fallback;
+    private String buildScoreboard() {
+        List<PlayerSlot> ranking = new ArrayList<>(playersByToken.values());
+        ranking.sort((a, b) -> Integer.compare(b.score, a.score));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("ผลคะแนนห้องออนไลน์\n");
+
+        for (int i = 0; i < ranking.size(); i++) {
+            sb.append(i + 1)
+              .append(") ")
+              .append(ranking.get(i).name)
+              .append(" - ")
+              .append(ranking.get(i).score)
+              .append("\n");
         }
+        return sb.toString().trim();
+    }
+
+    // =========================
+    // Broadcast
+    // =========================
+
+    private void broadcast(String msg) {
+        for (PlayerSlot p : playersByToken.values()) {
+            if (p.connected && p.session != null) {
+                p.session.send(msg);
+            }
+        }
+    }
+
+    private void broadcastPlayerList() {
+        List<String> list = new ArrayList<>();
+        for (PlayerSlot p : playersByToken.values()) {
+            list.add(p.name + (p.connected ? "" : " (DC)"));
+        }
+        broadcast("PLAYER_LIST|" + String.join(",", list));
+        notifyPlayerList();
+    }
+
+    private void notifyPlayerList() {
+        if (listener != null) {
+            List<String> snapshot = new ArrayList<>();
+            for (PlayerSlot p : playersByToken.values()) {
+                snapshot.add(p.name);
+            }
+            SwingUtilities.invokeLater(() ->
+                    listener.onPlayerListChanged(snapshot));
+        }
+    }
+
+    // =========================
+    // Utils
+    // =========================
+
+    private String uniqueName(String base) {
+        Set<String> names = new HashSet<>();
+        for (PlayerSlot p : playersByToken.values()) names.add(p.name);
+
+        if (!names.contains(base)) return base;
+        int i = 2;
+        while (names.contains(base + "_" + i)) i++;
+        return base + "_" + i;
+    }
+
+    private static String sanitize(String text) {
+        if (text == null || text.trim().isEmpty()) return "Player";
+        return text.trim().replace("|", "_").replace(",", "_").replace(";", "_").replace(":", "_");
+    }
+
+    // =========================
+    // State Sync (Reconnect)
+    // =========================
+    
+    private String buildStateSync() {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("ROOM=").append(roomName).append(";");
+        sb.append("GAME_STARTED=").append(gameStarted).append(";");
+        sb.append("PLAYERS=");
+
+        List<String> list = new ArrayList<>();
+        for (PlayerSlot p : playersByToken.values()) {
+            list.add(p.name + ":" +
+             p.score + ":" +
+             (p.connected ? "1" : "0") + ":" +
+             (p.ready ? "1" : "0"));
+        }
+
+        sb.append(String.join(",", list));
+        sb.append(";CURRENT_TURN=");
+
+        if (!turnOrder.isEmpty()) {
+            String token = turnOrder.get(currentTurnIndex);
+            PlayerSlot p = playersByToken.get(token);
+            if (p != null) {
+                sb.append(p.name);
+            }
+        }
+        return sb.toString();
+    }
+
+    public synchronized boolean areAllReady() {
+        if (playersByToken.isEmpty()) return false;
+
+        for (PlayerSlot p : playersByToken.values()) {
+            if (!p.ready) return false;
+        }
+        return true;
+    }
+
+    private void checkAllReady() {
+        if (areAllReady()) {
+            broadcast("ALL_READY");
+        }
+    }
+
+    private void broadcastReadyStatus() {
+        List<String> list = new ArrayList<>();
+        for (PlayerSlot p : playersByToken.values()) {
+            list.add(p.name + ":" + p.ready);
+        }
+        broadcast("READY_STATUS|" + String.join(",", list));
     }
 }
